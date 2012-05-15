@@ -1,0 +1,7 @@
+*.o
+/bmpsuite
+/bmpsuite.exe
+/g
+/q
+/b
+/stamp
