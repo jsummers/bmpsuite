@@ -71,6 +71,10 @@ struct context {
 	int w, h;
 	int rowsize;
 	int xpelspermeter, ypelspermeter;
+
+	int pal_wb; // 2-color, palette[0] = white
+	int pal_bg; // 2-color, blue & green
+	int pal_p1; // 1-color
 };
 
 static void set_int16(struct context *c, size_t offset, int v)
@@ -164,7 +168,7 @@ static int ordered_dither_lowlevel(double fraction, int x, int y)
 	 };
 
 	threshold = pattern[(x%8) + 8*(y%8)];
-	return (fraction >= threshold);
+	return (fraction >= threshold) ? 1 : 0;
 }
 
 // 'v' is on a scale from 0.0 to 1.0.
@@ -251,6 +255,8 @@ static void set_pixel(struct context *c, int x, int y,
 			 + srgb_to_linear(g)*0.715158
 			 + srgb_to_linear(b)*0.072187;
 		tmp1 = ordered_dither_lowlevel(tmpd,x,y);
+		if(c->pal_wb) tmp1 = 1-tmp1; // Palette starts with white, so invert the colors.
+		if(c->pal_p1) tmp1 = 0;
 		if(tmp1) {
 			c->mem[c->bitsoffset+offs] |= 1<<(7-x%8);
 		}
@@ -307,12 +313,29 @@ static void write_palette(struct context *c)
 	}
 	else if(c->bpp==1) {
 		if(c->pal_entries==2) {
-			c->mem[offs+4*0+2] = 0;
-			c->mem[offs+4*0+1] = 0;
-			c->mem[offs+4*0+0] = 0;
-			c->mem[offs+4*1+2] = 255;
-			c->mem[offs+4*1+1] = 255;
-			c->mem[offs+4*1+0] = 255;
+			if(c->pal_wb) {
+				c->mem[offs+4*0+2] = 255;
+				c->mem[offs+4*0+1] = 255;
+				c->mem[offs+4*0+0] = 255;
+			}
+			else if(c->pal_bg) {
+				c->mem[offs+4*0+2] = 64;
+				c->mem[offs+4*0+1] = 64;
+				c->mem[offs+4*0+0] = 255;
+				c->mem[offs+4*1+2] = 64;
+				c->mem[offs+4*1+1] = 255;
+				c->mem[offs+4*1+0] = 64;
+			}
+			else {
+				c->mem[offs+4*1+2] = 255;
+				c->mem[offs+4*1+1] = 255;
+				c->mem[offs+4*1+0] = 255;
+			}
+		}
+		else { // assuming c->pal_p1
+			c->mem[offs+4*0+2] = 64;
+			c->mem[offs+4*0+1] = 64;
+			c->mem[offs+4*0+0] = 255;
 		}
 	}
 }
@@ -393,7 +416,7 @@ static void defaultbmp(struct context *c)
 	c->w = 127;
 	c->h = 64;
 	c->bpp = 8;
-	c->pal_entries = 256;
+	c->pal_entries = 252;
 	c->clr_used = 0;
 	c->bmpversion = 3;
 	c->headersize = 40;
@@ -403,6 +426,9 @@ static void defaultbmp(struct context *c)
 	c->filename = "noname.bmp";
 	c->xpelspermeter = 2835; // = about 72dpi
 	c->ypelspermeter = 2835;
+	c->pal_wb = 0;
+	c->pal_bg = 0;
+	c->pal_p1 = 0;
 	set_calculated_fields(c);
 }
 
@@ -416,7 +442,12 @@ static int run(struct context *c)
 
 	defaultbmp(c);
 	c->filename = "g/pal8.bmp";
-	c->pal_entries = 252;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "b/pal8badindex.bmp";
+	c->pal_entries = 100;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
@@ -431,6 +462,30 @@ static int run(struct context *c)
 	c->filename = "g/pal1.bmp";
 	c->bpp = 1;
 	c->pal_entries = 2;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "g/pal1wb.bmp";
+	c->bpp = 1;
+	c->pal_entries = 2;
+	c->pal_wb = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "g/pal1bg.bmp";
+	c->bpp = 1;
+	c->pal_entries = 2;
+	c->pal_bg = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "q/pal1p1.bmp";
+	c->bpp = 1;
+	c->pal_entries = 1;
+	c->pal_p1 = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
