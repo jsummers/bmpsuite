@@ -240,7 +240,7 @@ static int ordered_dither(double v_to_1, int maxcc, int x, int y)
 static void set_pixel(struct context *c, int x, int y,
   double r, double g, double b, double a)
 {
-	unsigned char r2, g2, b2, a2;
+	unsigned int r2, g2, b2, a2;
 	int tmp1, tmp2, tmp3;
 	int p;
 	size_t row_offs;
@@ -252,15 +252,27 @@ static void set_pixel(struct context *c, int x, int y,
 
 	if(c->bpp==32) {
 		offs = row_offs + 4*x;
-		r2 = (unsigned char)scale_to_int(r,255);
-		g2 = (unsigned char)scale_to_int(g,255);
-		b2 = (unsigned char)scale_to_int(b,255);
-		if(c->rgba) a2 = (unsigned char)scale_to_int(a,255);
-		else a2 = 0;
-		c->mem[c->bitsoffset+offs+0] = b2;
-		c->mem[c->bitsoffset+offs+1] = g2;
-		c->mem[c->bitsoffset+offs+2] = r2;
-		c->mem[c->bitsoffset+offs+3] = a2;
+		if(c->compression==3 && !c->rgba) {
+			r2 = scale_to_int(r,(1<<c->nbits_r)-1);
+			g2 = scale_to_int(g,(1<<c->nbits_g)-1);
+			b2 = scale_to_int(b,(1<<c->nbits_b)-1);
+			u = (r2<<(c->nbits_g+c->nbits_b)) | (g2<<c->nbits_b) | b2;
+			c->mem[c->bitsoffset+offs+0] = (unsigned char)(u&0xff);
+			c->mem[c->bitsoffset+offs+1] = (unsigned char)((u>>8)&0xff);
+			c->mem[c->bitsoffset+offs+2] = (unsigned char)((u>>16)&0xff);
+			c->mem[c->bitsoffset+offs+3] = (unsigned char)((u>>24)&0xff);
+		}
+		else {
+			r2 = scale_to_int(r,255);
+			g2 = scale_to_int(g,255);
+			b2 = scale_to_int(b,255);
+			if(c->rgba) a2 = scale_to_int(a,255);
+			else a2 = 0;
+			c->mem[c->bitsoffset+offs+0] = b2;
+			c->mem[c->bitsoffset+offs+1] = g2;
+			c->mem[c->bitsoffset+offs+2] = r2;
+			c->mem[c->bitsoffset+offs+3] = a2;
+		}
 	}
 	else if(c->bpp==24) {
 		offs = row_offs + 3*x;
@@ -273,9 +285,9 @@ static void set_pixel(struct context *c, int x, int y,
 	}
 	else if(c->bpp==16) {
 		offs = row_offs + 2*x;
-		r2 = (unsigned char)scale_to_int(r,(1<<c->nbits_r)-1);
-		g2 = (unsigned char)scale_to_int(g,(1<<c->nbits_g)-1);
-		b2 = (unsigned char)scale_to_int(b,(1<<c->nbits_b)-1);
+		r2 = scale_to_int(r,(1<<c->nbits_r)-1);
+		g2 = scale_to_int(g,(1<<c->nbits_g)-1);
+		b2 = scale_to_int(b,(1<<c->nbits_b)-1);
 		u = (r2<<(c->nbits_g+c->nbits_b)) | (g2<<c->nbits_b) | b2;
 		c->mem[c->bitsoffset+offs+0] = (unsigned char)(u&0xff);
 		c->mem[c->bitsoffset+offs+1] = (unsigned char)((u>>8)&0xff);
@@ -609,6 +621,18 @@ static int run(struct context *c)
 	c->filename = "g/rgb32.bmp";
 	c->bpp = 32;
 	c->pal_entries = 0;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "q/rgb32-111110.bmp";
+	c->bpp = 32;
+	c->compression = 3;
+	c->pal_entries = 0;
+	c->bf_r = 0xffe00000; c->nbits_r = 11;
+	c->bf_g = 0x001ffc00; c->nbits_g = 11;
+	c->bf_b = 0x000003ff; c->nbits_b = 10;
+	c->bitfieldssize = 12;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 

@@ -25,7 +25,7 @@ stamp: $(BMPSUITE)
 	./$(BMPSUITE)
 	touch stamp
 
-check:
+check: stamp
 	md5sum g/* q/* b/* > checksums.tmp
 	diff checksums checksums.tmp
 	@echo OK
