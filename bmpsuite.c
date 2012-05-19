@@ -79,6 +79,7 @@ struct context {
 	int rgba;
 	unsigned int bf_r, bf_g, bf_b, bf_a; // used if compression==3
 	unsigned int nbits_r, nbits_g, nbits_b, nbits_a;
+	int dither;
 };
 
 static void set_int16(struct context *c, size_t offset, int v)
@@ -285,10 +286,20 @@ static void set_pixel(struct context *c, int x, int y,
 	}
 	else if(c->bpp==16) {
 		offs = row_offs + 2*x;
-		r2 = scale_to_int(r,(1<<c->nbits_r)-1);
-		g2 = scale_to_int(g,(1<<c->nbits_g)-1);
-		b2 = scale_to_int(b,(1<<c->nbits_b)-1);
+		if(c->dither) {
+			r2 = ordered_dither(r,(1<<c->nbits_r)-1,x,y);
+			g2 = ordered_dither(g,(1<<c->nbits_g)-1,x,y);
+			b2 = ordered_dither(b,(1<<c->nbits_b)-1,x,y);
+		}
+		else {
+			r2 = scale_to_int(r,(1<<c->nbits_r)-1);
+			g2 = scale_to_int(g,(1<<c->nbits_g)-1);
+			b2 = scale_to_int(b,(1<<c->nbits_b)-1);
+		}
+		if(c->rgba) a2 = scale_to_int(a,(1<<c->nbits_a)-1);
+
 		u = (r2<<(c->nbits_g+c->nbits_b)) | (g2<<c->nbits_b) | b2;
+		if(c->rgba) u |= a2<<(c->nbits_r+c->nbits_g+c->nbits_b);
 		c->mem[c->bitsoffset+offs+0] = (unsigned char)(u&0xff);
 		c->mem[c->bitsoffset+offs+1] = (unsigned char)((u>>8)&0xff);
 	}
@@ -528,6 +539,7 @@ static void defaultbmp(struct context *c)
 	c->pal_bg = 0;
 	c->pal_p1 = 0;
 	c->rgba = 0;
+	c->dither = 0;
 	c->bf_r = c->bf_g = c->bf_b = c->bf_a = 0;
 	c->nbits_r = c->nbits_g = c->nbits_b = c->nbits_a = 0;
 	set_calculated_fields(c);
@@ -607,6 +619,33 @@ static int run(struct context *c)
 	c->bf_g = 0x000007e0; c->nbits_g = 6;
 	c->bf_b = 0x0000001f; c->nbits_b = 5;
 	c->bitfieldssize = 12;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "q/rgba16-4444.bmp";
+	c->bmpversion = 5;
+	c->rgba = 1;
+	c->bpp = 16;
+	c->pal_entries = 0;
+	c->compression = 3;
+	c->bf_r = 0x00000f00; c->nbits_r = 4;
+	c->bf_g = 0x000000f0; c->nbits_g = 4;
+	c->bf_b = 0x0000000f; c->nbits_b = 4;
+	c->bf_a = 0x0000f000; c->nbits_a = 4;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "q/rgb16-231.bmp";
+	c->bpp = 16;
+	c->pal_entries = 0;
+	c->compression = 3;
+	c->bf_r = 0x00000030; c->nbits_r = 2;
+	c->bf_g = 0x0000000e; c->nbits_g = 3;
+	c->bf_b = 0x00000001; c->nbits_b = 1;
+	c->bitfieldssize = 12;
+	c->dither = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
