@@ -77,6 +77,8 @@ struct context {
 	int pal_bg; // 2-color, blue & green
 	int pal_p1; // 1-color
 	int rgba;
+	unsigned int bf_r, bf_g, bf_b, bf_a; // used if compression==3
+	unsigned int nbits_r, nbits_g, nbits_b, nbits_a;
 };
 
 static void set_int16(struct context *c, size_t offset, int v)
@@ -271,10 +273,10 @@ static void set_pixel(struct context *c, int x, int y,
 	}
 	else if(c->bpp==16) {
 		offs = row_offs + 2*x;
-		r2 = (unsigned char)scale_to_int(r,31);
-		g2 = (unsigned char)scale_to_int(g,31);
-		b2 = (unsigned char)scale_to_int(b,31);
-		u = (r2<<10) | (g2<<5) | b2;
+		r2 = (unsigned char)scale_to_int(r,(1<<c->nbits_r)-1);
+		g2 = (unsigned char)scale_to_int(g,(1<<c->nbits_g)-1);
+		b2 = (unsigned char)scale_to_int(b,(1<<c->nbits_b)-1);
+		u = (r2<<(c->nbits_g+c->nbits_b)) | (g2<<c->nbits_b) | b2;
 		c->mem[c->bitsoffset+offs+0] = (unsigned char)(u&0xff);
 		c->mem[c->bitsoffset+offs+1] = (unsigned char)((u>>8)&0xff);
 	}
@@ -327,6 +329,16 @@ static void write_bits(struct context *c)
 			set_pixel(c,i,j,r,g,b,a);
 		}
 	}
+}
+
+static void write_bitfields(struct context *c)
+{
+	size_t offs;
+	if(c->bitfieldssize!=12) return;
+	offs = 14+c->headersize;
+	set_uint32(c,offs  ,c->bf_r);
+	set_uint32(c,offs+4,c->bf_g);
+	set_uint32(c,offs+8,c->bf_b);
 }
 
 static void write_palette(struct context *c)
@@ -412,10 +424,10 @@ static void write_bitmapinfoheader(struct context *c)
 
 	if(c->bmpversion>=4) {
 		if(c->compression==3 && c->rgba) {
-			set_uint32(c,14+40,0x00ff0000); // Red mask
-			set_uint32(c,14+44,0x0000ff00); // Green mask
-			set_uint32(c,14+48,0x000000ff); // Blue mask
-			set_uint32(c,14+52,0xff000000); // Alpha mask
+			set_uint32(c,14+40,c->bf_r);
+			set_uint32(c,14+44,c->bf_g);
+			set_uint32(c,14+48,c->bf_b);
+			set_uint32(c,14+52,c->bf_a);
 		}
 		set_uint32(c,14+56,0x73524742); // CSType = sRGB
 	}
@@ -426,6 +438,7 @@ static void write_bitmapinfoheader(struct context *c)
 
 static void make_bmp(struct context *c)
 {
+	write_bitfields(c);
 	write_palette(c);
 	write_bits(c);
 	write_bitmapinfoheader(c);
@@ -478,7 +491,7 @@ static void set_calculated_fields(struct context *c)
 
 	c->palettesize = c->pal_entries*4;
 
-	c->bitsoffset = 14 + c->headersize + c->palettesize;
+	c->bitsoffset = 14 + c->headersize + c->bitfieldssize + c->palettesize;
 }
 
 static void defaultbmp(struct context *c)
@@ -503,6 +516,8 @@ static void defaultbmp(struct context *c)
 	c->pal_bg = 0;
 	c->pal_p1 = 0;
 	c->rgba = 0;
+	c->bf_r = c->bf_g = c->bf_b = c->bf_a = 0;
+	c->nbits_r = c->nbits_g = c->nbits_b = c->nbits_a = 0;
 	set_calculated_fields(c);
 }
 
@@ -566,7 +581,20 @@ static int run(struct context *c)
 	defaultbmp(c);
 	c->filename = "g/rgb16.bmp";
 	c->bpp = 16;
+	c->nbits_r = c->nbits_g = c->nbits_b = 5;
 	c->pal_entries = 0;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "g/rgb16-565.bmp";
+	c->bpp = 16;
+	c->pal_entries = 0;
+	c->compression = 3;
+	c->bf_r = 0x0000f800; c->nbits_r = 5;
+	c->bf_g = 0x000007e0; c->nbits_g = 6;
+	c->bf_b = 0x0000001f; c->nbits_b = 5;
+	c->bitfieldssize = 12;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
@@ -589,6 +617,8 @@ static int run(struct context *c)
 	c->bmpversion = 5;
 	c->bpp = 32;
 	c->compression = 3; // BI_BITFIELDS
+	c->bf_r = 0x00ff0000; c->bf_g = 0x0000ff00;
+	c->bf_b = 0x000000ff; c->bf_a = 0xff000000;
 	c->rgba = 1;
 	c->pal_entries = 0;
 	set_calculated_fields(c);
