@@ -5,7 +5,7 @@ LDFLAGS:=-lm
 
 all: stamp
 
-.PHONY: all clean
+.PHONY: all clean check
 
 ifeq ($(OS),Windows_NT)
 BMPSUITE:=bmpsuite.exe
@@ -24,6 +24,12 @@ $(BMPSUITE): bmpsuite.o
 stamp: $(BMPSUITE)
 	./$(BMPSUITE)
 	touch stamp
+
+check:
+	md5sum g/* q/* b/* > checksums.tmp
+	diff checksums checksums.tmp
+	@echo OK
+	@rm -f checksums.tmp
 
 clean:
 	rm -f $(BMPSUITE) *.o
