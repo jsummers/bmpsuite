@@ -71,10 +71,12 @@ struct context {
 	int w, h;
 	int rowsize;
 	int xpelspermeter, ypelspermeter;
+	int compression;
 
 	int pal_wb; // 2-color, palette[0] = white
 	int pal_bg; // 2-color, blue & green
 	int pal_p1; // 1-color
+	int rgba;
 };
 
 static void set_int16(struct context *c, size_t offset, int v)
@@ -84,6 +86,14 @@ static void set_int16(struct context *c, size_t offset, int v)
 }
 
 static void set_int32(struct context *c, size_t offset, int v)
+{
+	c->mem[offset] = v&0xff;
+	c->mem[offset+1] = (v>>8)&0xff;
+	c->mem[offset+2] = (v>>16)&0xff;
+	c->mem[offset+3] = (v>>24)&0xff;
+}
+
+static void set_uint32(struct context *c, size_t offset, unsigned int v)
 {
 	c->mem[offset] = v&0xff;
 	c->mem[offset+1] = (v>>8)&0xff;
@@ -112,7 +122,7 @@ static double srgb_to_linear(double v_srgb)
 }
 
 static void get_pixel_color(struct context *c, int x, int y,
-	double *pr, double *pg, double *pb)
+	double *pr, double *pg, double *pb, double *pa)
 {
 	unsigned char t;
 
@@ -121,14 +131,30 @@ static void get_pixel_color(struct context *c, int x, int y,
 	{
 		t = bmpovl[y-bmpovl_ypos][x-bmpovl_xpos];
 		if(t=='1') {
-			*pr = 0.0; *pg = 0.0; *pb = 0.0;
+			*pr = 0.0; *pg = 0.0; *pb = 0.0; *pa = 1.0;
 			return;
 		}
 		else if(t=='2') {
-			*pr = 1.0; *pg = 1.0; *pb = 1.0;
+			if(c->rgba) {
+				// Make the inside of the overlay transparent, if possible.
+				if( (y-bmpovl_ypos)<(bmpovl_height/2) ) {
+					// Make the top half complete transparent ("transparent green").
+					*pr = 0.0; *pg = 1.0; *pb = 0.0; *pa = 0.0;
+				}
+				else {
+					// Make the bootom half a red gradient from transparent to opaque.
+					*pr = 1.0; *pg = 0.0; *pb = 0.0;
+					*pa = 2*((double)(y-bmpovl_ypos)) /(bmpovl_height) -1.0;
+				}
+			}
+			else {
+				*pr = 1.0; *pg = 1.0; *pb = 1.0; *pa = 1.0;
+			}
 			return;
 		}
 	}
+
+	*pa = 1.0;
 
 	// Standard truecolor image
 	if(x<32) {
@@ -210,9 +236,9 @@ static int ordered_dither(double v_to_1, int maxcc, int x, int y)
 }
 
 static void set_pixel(struct context *c, int x, int y,
-  double r, double g, double b)
+  double r, double g, double b, double a)
 {
-	unsigned char r2, g2, b2;
+	unsigned char r2, g2, b2, a2;
 	int tmp1, tmp2, tmp3;
 	int p;
 	size_t row_offs;
@@ -221,7 +247,18 @@ static void set_pixel(struct context *c, int x, int y,
 
 	row_offs = (c->h-y-1)*c->rowsize;
 
-	if(c->bpp==24) {
+	if(c->bpp==32) {
+		offs = row_offs + 4*x;
+		r2 = (unsigned char)scale_to_int(r,255);
+		g2 = (unsigned char)scale_to_int(g,255);
+		b2 = (unsigned char)scale_to_int(b,255);
+		a2 = (unsigned char)scale_to_int(a,255);
+		c->mem[c->bitsoffset+offs+0] = b2;
+		c->mem[c->bitsoffset+offs+1] = g2;
+		c->mem[c->bitsoffset+offs+2] = r2;
+		c->mem[c->bitsoffset+offs+3] = a2;
+	}
+	else if(c->bpp==24) {
 		offs = row_offs + 3*x;
 		r2 = (unsigned char)scale_to_int(r,255);
 		g2 = (unsigned char)scale_to_int(g,255);
@@ -266,7 +303,7 @@ static void set_pixel(struct context *c, int x, int y,
 static void write_bits(struct context *c)
 {
 	int i,j;
-	double r, g, b;
+	double r, g, b, a;
 
 	c->rowsize = (((c->w * c->bpp)+31)/32)*4;
 	c->bitssize = c->rowsize*c->h;
@@ -275,8 +312,8 @@ static void write_bits(struct context *c)
 
 	for(j=0;j<c->h;j++) {
 		for(i=0;i<c->w;i++) {
-			get_pixel_color(c,i,j,&r,&g,&b);
-			set_pixel(c,i,j,r,g,b);
+			get_pixel_color(c,i,j,&r,&g,&b,&a);
+			set_pixel(c,i,j,r,g,b,a);
 		}
 	}
 }
@@ -350,17 +387,30 @@ static void write_fileheader(struct context *c)
 
 static void write_bitmapinfoheader(struct context *c)
 {
-	set_int32(c,14+0,40);
+	set_int32(c,14+0,c->headersize);
 	set_int32(c,14+4,c->w);
 	set_int32(c,14+8,c->h);
 	set_int16(c,14+12,1); // planes
 	set_int16(c,14+14,c->bpp);
-	set_int32(c,14+16,0); // compression
+	set_int32(c,14+16,c->compression);
 	set_int32(c,14+20,c->bitssize); // biSizeImage
 	set_int32(c,14+24,c->xpelspermeter);
 	set_int32(c,14+28,c->ypelspermeter);
 	set_int32(c,14+32,c->clr_used); // biClrUsed
 	set_int32(c,14+36,0); // biClrImportant
+
+	if(c->bmpversion>=4) {
+		if(c->compression==3 && c->rgba) {
+			set_uint32(c,14+40,0x00ff0000); // Red mask
+			set_uint32(c,14+44,0x0000ff00); // Green mask
+			set_uint32(c,14+48,0x000000ff); // Blue mask
+			set_uint32(c,14+52,0xff000000); // Alpha mask
+		}
+		set_uint32(c,14+56,0x73524742); // CSType = sRGB
+	}
+	if(c->bmpversion>=5) {
+		set_uint32(c,14+108,4); // Rendering intent = Perceptual
+	}
 }
 
 static void make_bmp(struct context *c)
@@ -395,6 +445,13 @@ static int make_bmp_file(struct context *c)
 
 static void set_calculated_fields(struct context *c)
 {
+	if(c->bmpversion==5) {
+		c->headersize = 124;
+	}
+	else {
+		c->headersize = 40;
+	}
+
 	if(c->bpp==8 && c->pal_entries!=256) {
 		c->clr_used = c->pal_entries;
 	}
@@ -404,6 +461,10 @@ static void set_calculated_fields(struct context *c)
 	else if(c->bpp==1 && c->pal_entries!=2) {
 		c->clr_used = c->pal_entries;
 	}
+	else {
+		c->clr_used = c->pal_entries;
+	}
+
 	c->palettesize = c->pal_entries*4;
 
 	c->bitsoffset = 14 + c->headersize + c->palettesize;
@@ -424,11 +485,13 @@ static void defaultbmp(struct context *c)
 	c->bitfieldssize = 0;
 	c->rowsize = 0;
 	c->filename = "noname.bmp";
+	c->compression = 0; // BI_RGB
 	c->xpelspermeter = 2835; // = about 72dpi
 	c->ypelspermeter = 2835;
 	c->pal_wb = 0;
 	c->pal_bg = 0;
 	c->pal_p1 = 0;
+	c->rgba = 0;
 	set_calculated_fields(c);
 }
 
@@ -492,6 +555,16 @@ static int run(struct context *c)
 	defaultbmp(c);
 	c->filename = "g/rgb24.bmp";
 	c->bpp = 24;
+	c->pal_entries = 0;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "q/rgba32.bmp";
+	c->bmpversion = 5;
+	c->bpp = 32;
+	c->compression = 3; // BI_BITFIELDS
+	c->rgba = 1;
 	c->pal_entries = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
