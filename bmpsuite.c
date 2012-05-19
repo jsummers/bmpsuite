@@ -252,7 +252,8 @@ static void set_pixel(struct context *c, int x, int y,
 		r2 = (unsigned char)scale_to_int(r,255);
 		g2 = (unsigned char)scale_to_int(g,255);
 		b2 = (unsigned char)scale_to_int(b,255);
-		a2 = (unsigned char)scale_to_int(a,255);
+		if(c->rgba) a2 = (unsigned char)scale_to_int(a,255);
+		else a2 = 0;
 		c->mem[c->bitsoffset+offs+0] = b2;
 		c->mem[c->bitsoffset+offs+1] = g2;
 		c->mem[c->bitsoffset+offs+2] = r2;
@@ -555,6 +556,13 @@ static int run(struct context *c)
 	defaultbmp(c);
 	c->filename = "g/rgb24.bmp";
 	c->bpp = 24;
+	c->pal_entries = 0;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "g/rgb32.bmp";
+	c->bpp = 32;
 	c->pal_entries = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
