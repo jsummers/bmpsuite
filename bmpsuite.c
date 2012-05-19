@@ -244,6 +244,7 @@ static void set_pixel(struct context *c, int x, int y,
 	size_t row_offs;
 	size_t offs;
 	double tmpd;
+	unsigned int u;
 
 	row_offs = (c->h-y-1)*c->rowsize;
 
@@ -267,6 +268,15 @@ static void set_pixel(struct context *c, int x, int y,
 		c->mem[c->bitsoffset+offs+0] = b2;
 		c->mem[c->bitsoffset+offs+1] = g2;
 		c->mem[c->bitsoffset+offs+2] = r2;
+	}
+	else if(c->bpp==16) {
+		offs = row_offs + 2*x;
+		r2 = (unsigned char)scale_to_int(r,31);
+		g2 = (unsigned char)scale_to_int(g,31);
+		b2 = (unsigned char)scale_to_int(b,31);
+		u = (r2<<10) | (g2<<5) | b2;
+		c->mem[c->bitsoffset+offs+0] = (unsigned char)(u&0xff);
+		c->mem[c->bitsoffset+offs+1] = (unsigned char)((u>>8)&0xff);
 	}
 	else if(c->bpp==8) {
 		offs = row_offs + x;
@@ -550,6 +560,13 @@ static int run(struct context *c)
 	c->bpp = 1;
 	c->pal_entries = 1;
 	c->pal_p1 = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "g/rgb16.bmp";
+	c->bpp = 16;
+	c->pal_entries = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
