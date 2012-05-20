@@ -82,6 +82,7 @@ struct context {
 	int dither;
 	int topdown;
 	int alphahack32;
+	int halfheight;
 };
 
 static void set_int16(struct context *c, size_t offset, int v)
@@ -345,7 +346,7 @@ static void write_bits(struct context *c)
 
 	for(j=0;j<c->h;j++) {
 		for(i=0;i<c->w;i++) {
-			get_pixel_color(c,i,j,&r,&g,&b,&a);
+			get_pixel_color(c,i,c->halfheight ? j*2 : j, &r,&g,&b,&a);
 			set_pixel(c,i,j,r,g,b,a);
 		}
 	}
@@ -548,6 +549,7 @@ static void defaultbmp(struct context *c)
 	c->dither = 0;
 	c->topdown = 0;
 	c->alphahack32 = 0;
+	c->halfheight = 0;
 	c->bf_r = c->bf_g = c->bf_b = c->bf_a = 0;
 	c->nbits_r = c->nbits_g = c->nbits_b = c->nbits_a = 0;
 	c->bf_shift_r = c->bf_shift_g = c->bf_shift_b = c->bf_shift_a = 0;
@@ -582,6 +584,14 @@ static int run(struct context *c)
 	defaultbmp(c);
 	c->filename = "q/pal8topdown.bmp";
 	c->topdown = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "g/pal8nonsquare.bmp";
+	c->halfheight = 1;
+	c->ypelspermeter = 1417;
+	c->h = 32;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
