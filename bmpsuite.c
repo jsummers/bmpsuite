@@ -81,6 +81,7 @@ struct context {
 	unsigned int nbits_r, nbits_g, nbits_b, nbits_a;
 	int dither;
 	int topdown;
+	int alphahack32;
 };
 
 static void set_int16(struct context *c, size_t offset, int v)
@@ -271,7 +272,8 @@ static void set_pixel(struct context *c, int x, int y,
 			r2 = scale_to_int(r,255);
 			g2 = scale_to_int(g,255);
 			b2 = scale_to_int(b,255);
-			if(c->rgba) a2 = scale_to_int(a,255);
+			if(c->alphahack32) a = 1.0 - ((double)y)/63.0;
+			if(c->rgba || c->alphahack32) a2 = scale_to_int(a,255);
 			else a2 = 0;
 			c->mem[c->bitsoffset+offs+0] = b2;
 			c->mem[c->bitsoffset+offs+1] = g2;
@@ -555,6 +557,7 @@ static void defaultbmp(struct context *c)
 	c->rgba = 0;
 	c->dither = 0;
 	c->topdown = 0;
+	c->alphahack32 = 0;
 	c->bf_r = c->bf_g = c->bf_b = c->bf_a = 0;
 	c->nbits_r = c->nbits_g = c->nbits_b = c->nbits_a = 0;
 	set_calculated_fields(c);
@@ -694,6 +697,14 @@ static int run(struct context *c)
 	c->filename = "g/rgb32.bmp";
 	c->bpp = 32;
 	c->pal_entries = 0;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "q/rgb32fakealpha.bmp";
+	c->bpp = 32;
+	c->pal_entries = 0;
+	c->alphahack32 = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
