@@ -697,6 +697,18 @@ static int run(struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
+	c->filename = "g/rgb32bf.bmp";
+	c->bpp = 32;
+	c->compression = 3;
+	c->pal_entries = 0;
+	c->bf_r = 0xff000000; c->nbits_r = 8; c->bf_shift_r = 24;
+	c->bf_g = 0x00000ff0; c->nbits_g = 8; c->bf_shift_g = 4;
+	c->bf_b = 0x00ff0000; c->nbits_b = 8; c->bf_shift_b = 16;
+	c->bitfieldssize = 12;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
 	c->filename = "q/rgb32fakealpha.bmp";
 	c->bpp = 32;
 	c->pal_entries = 0;
