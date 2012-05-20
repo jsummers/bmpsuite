@@ -80,6 +80,7 @@ struct context {
 	unsigned int bf_r, bf_g, bf_b, bf_a; // used if compression==3
 	unsigned int nbits_r, nbits_g, nbits_b, nbits_a;
 	int dither;
+	int topdown;
 };
 
 static void set_int16(struct context *c, size_t offset, int v)
@@ -249,7 +250,10 @@ static void set_pixel(struct context *c, int x, int y,
 	double tmpd;
 	unsigned int u;
 
-	row_offs = (c->h-y-1)*c->rowsize;
+	if(c->topdown)
+		row_offs = y*c->rowsize;
+	else
+		row_offs = (c->h-y-1)*c->rowsize;
 
 	if(c->bpp==32) {
 		offs = row_offs + 4*x;
@@ -445,7 +449,7 @@ static void write_bitmapinfoheader(struct context *c)
 {
 	set_int32(c,14+0,c->headersize);
 	set_int32(c,14+4,c->w);
-	set_int32(c,14+8,c->h);
+	set_int32(c,14+8,(c->topdown) ? -c->h : c->h);
 	set_int16(c,14+12,1); // planes
 	set_int16(c,14+14,c->bpp);
 	set_int32(c,14+16,c->compression);
@@ -550,6 +554,7 @@ static void defaultbmp(struct context *c)
 	c->pal_p1 = 0;
 	c->rgba = 0;
 	c->dither = 0;
+	c->topdown = 0;
 	c->bf_r = c->bf_g = c->bf_b = c->bf_a = 0;
 	c->nbits_r = c->nbits_g = c->nbits_b = c->nbits_a = 0;
 	set_calculated_fields(c);
@@ -577,6 +582,12 @@ static int run(struct context *c)
 	defaultbmp(c);
 	c->filename = "b/pal8badindex.bmp";
 	c->pal_entries = 100;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "q/pal8topdown.bmp";
+	c->topdown = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
