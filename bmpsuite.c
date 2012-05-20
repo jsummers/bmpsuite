@@ -724,10 +724,10 @@ static int run(struct context *c)
 	c->bmpversion = 5;
 	c->bpp = 32;
 	c->compression = 3; // BI_BITFIELDS
-	c->bf_r = 0x00ff0000; c->nbits_r = 8; c->bf_shift_r = 16;
+	c->bf_r = 0xff000000; c->nbits_r = 8; c->bf_shift_r = 24;
 	c->bf_g = 0x0000ff00; c->nbits_g = 8; c->bf_shift_g = 8;
 	c->bf_b = 0x000000ff; c->nbits_b = 8; c->bf_shift_b = 0;
-	c->bf_a = 0xff000000; c->nbits_a = 8; c->bf_shift_a = 24;
+	c->bf_a = 0x00ff0000; c->nbits_a = 8; c->bf_shift_a = 16;
 	c->pal_entries = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
