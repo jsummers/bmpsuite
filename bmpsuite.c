@@ -372,10 +372,11 @@ static void write_palette(struct context *c)
 
 	offs = 14+c->headersize+c->bitfieldssize;
 
-	// R6G7B6 palette
-	// Entry for a given (R,G,B) is R + G*6 + B*42
 	if(c->bpp==8) {
+		// R6G7B6 palette
+		// Entry for a given (R,G,B) is R + G*6 + B*42
 		for(i=0;i<c->pal_entries;i++) {
+			if(i>=256) continue;
 			r = i%6;
 			g = (i%42)/6;
 			b = i/42;
@@ -420,6 +421,15 @@ static void write_palette(struct context *c)
 			c->mem[offs+4*0+1] = 64;
 			c->mem[offs+4*0+0] = 255;
 		}
+	}
+	else if(c->bpp>8) {
+		// Write a 'suggested' palette.
+		for(i=0;i<c->pal_entries;i++) {
+			c->mem[offs+4*i+2] = (unsigned char)(i*15);
+			c->mem[offs+4*i+1] = (unsigned char)(i*15);
+			c->mem[offs+4*i+0] = (unsigned char)(i*15);
+		}
+
 	}
 }
 
@@ -559,6 +569,12 @@ static int run(struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
+	c->filename = "q/pal8oversizepal.bmp";
+	c->pal_entries = 300;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
 	c->filename = "b/pal8badindex.bmp";
 	c->pal_entries = 100;
 	set_calculated_fields(c);
@@ -653,6 +669,13 @@ static int run(struct context *c)
 	c->filename = "g/rgb24.bmp";
 	c->bpp = 24;
 	c->pal_entries = 0;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "g/rgb24pal.bmp";
+	c->bpp = 24;
+	c->pal_entries = 17;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
