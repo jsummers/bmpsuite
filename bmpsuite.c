@@ -570,6 +570,24 @@ static int run(struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
+	c->filename = "g/pal8w124.bmp";
+	c->w = 124; c->h = 61;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "g/pal8w125.bmp";
+	c->w = 125; c->h = 62;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "g/pal8w126.bmp";
+	c->w = 126; c->h = 63;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
 	c->filename = "q/pal8oversizepal.bmp";
 	c->pal_entries = 300;
 	set_calculated_fields(c);
