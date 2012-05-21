@@ -83,6 +83,7 @@ struct context {
 	int topdown;
 	int alphahack32;
 	int halfheight;
+	int zero_biSizeImage;
 };
 
 static void set_int16(struct context *c, size_t offset, int v)
@@ -374,7 +375,7 @@ static void write_palette(struct context *c)
 		// R6G7B6 palette
 		// Entry for a given (R,G,B) is R + G*6 + B*42
 		for(i=0;i<c->pal_entries;i++) {
-			if(i>=256) continue;
+			if(i>=252) continue;
 			r = i%6;
 			g = (i%42)/6;
 			b = i/42;
@@ -447,7 +448,7 @@ static void write_bitmapinfoheader(struct context *c)
 	set_int16(c,14+12,1); // planes
 	set_int16(c,14+14,c->bpp);
 	set_int32(c,14+16,c->compression);
-	set_int32(c,14+20,c->bitssize); // biSizeImage
+	set_int32(c,14+20,c->zero_biSizeImage ? 0 : c->bitssize);
 	set_int32(c,14+24,c->xpelspermeter);
 	set_int32(c,14+28,c->ypelspermeter);
 	set_int32(c,14+32,c->clr_used); // biClrUsed
@@ -550,6 +551,7 @@ static void defaultbmp(struct context *c)
 	c->topdown = 0;
 	c->alphahack32 = 0;
 	c->halfheight = 0;
+	c->zero_biSizeImage = 0;
 	c->bf_r = c->bf_g = c->bf_b = c->bf_a = 0;
 	c->nbits_r = c->nbits_g = c->nbits_b = c->nbits_a = 0;
 	c->bf_shift_r = c->bf_shift_g = c->bf_shift_b = c->bf_shift_a = 0;
@@ -585,6 +587,16 @@ static int run(struct context *c)
 	c->filename = "g/pal8w126.bmp";
 	c->w = 126; c->h = 63;
 	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "g/pal8-0.bmp";
+	c->pal_entries = 256;
+	c->xpelspermeter = 0;
+	c->ypelspermeter = 0;
+	c->zero_biSizeImage = 1;
+	set_calculated_fields(c);
+	c->clr_used = 0;
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
