@@ -456,6 +456,8 @@ static void write_bitmapcoreheader(struct context *c)
 
 static void write_bitmapinfoheader(struct context *c)
 {
+	double gamma;
+
 	set_int32(c,14+0,c->headersize);
 	set_int32(c,14+4,c->w);
 	set_int32(c,14+8,(c->topdown) ? -c->h : c->h);
@@ -475,7 +477,38 @@ static void write_bitmapinfoheader(struct context *c)
 			set_uint32(c,14+48,c->bf_b);
 			set_uint32(c,14+52,c->bf_a);
 		}
-		set_uint32(c,14+56,0x73524742); // CSType = sRGB
+
+		if(c->bmpversion==4) {
+			// Modern documentation lists LCS_CALIBRATED_RGB as the only legal
+			// CSType for v4 bitmaps.
+			set_uint32(c,14+56,0); // CSType = LCS_CALIBRATED_RGB
+
+			// Chromaticity endpoints.
+			// I don't know much about what should go here. These are the
+			// chromaticities for sRGB.
+			// These values are in 2.30 fixed-point format.
+			set_uint32(c,14+60, (unsigned int)(0.5+0.6400*1073741824.0)); // red-x
+			set_uint32(c,14+64, (unsigned int)(0.5+0.3300*1073741824.0)); // red-y
+			set_uint32(c,14+68, (unsigned int)(0.5+0.0300*1073741824.0)); // red-z
+			set_uint32(c,14+72, (unsigned int)(0.5+0.3000*1073741824.0)); // green-x
+			set_uint32(c,14+76, (unsigned int)(0.5+0.6000*1073741824.0)); // green-y
+			set_uint32(c,14+80, (unsigned int)(0.5+0.1000*1073741824.0)); // green-z
+			set_uint32(c,14+84, (unsigned int)(0.5+0.1500*1073741824.0)); // blue-x
+			set_uint32(c,14+88, (unsigned int)(0.5+0.0600*1073741824.0)); // blue-y
+			set_uint32(c,14+92, (unsigned int)(0.5+0.7900*1073741824.0)); // blue-z
+
+			// I'm not sure if this is supposed to be the "image file gamma", like
+			// 1.0/2.2, or the "display gamma", like 2.2. "Image file gamma" is my
+			// best guess.
+			gamma = 1.0/2.2;
+			// These values are in 16.16 fixed-point format.
+			set_uint32(c,14+ 96, (unsigned int)(0.5+gamma*65536.0)); // bV4GammaRed
+			set_uint32(c,14+100, (unsigned int)(0.5+gamma*65536.0)); // bV4GammaGreen
+			set_uint32(c,14+104, (unsigned int)(0.5+gamma*65536.0)); // bV4GammaBlue
+		}
+		else {
+			set_uint32(c,14+56,0x73524742); // CSType = sRGB
+		}
 	}
 	if(c->bmpversion>=5) {
 		set_uint32(c,14+108,4); // Rendering intent = Perceptual
@@ -520,6 +553,9 @@ static void set_calculated_fields(struct context *c)
 {
 	if(c->bmpversion==5) {
 		c->headersize = 124;
+	}
+	else if(c->bmpversion==4) {
+		c->headersize = 108;
 	}
 	else if(c->bmpversion==2) {
 		c->headersize = 12;
@@ -601,6 +637,18 @@ static int run(struct context *c)
 	defaultbmp(c);
 	c->filename = "g/pal8v2.bmp";
 	c->bmpversion = 2;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "g/pal8v4.bmp";
+	c->bmpversion = 4;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "g/pal8v5.bmp";
+	c->bmpversion = 5;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
