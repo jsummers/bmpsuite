@@ -6,11 +6,23 @@
 
 <style>
  .b { background:url(bkgd.png); }
+ .q { background-color:#fff0e0; }
 </style>
 
 </head>
 
 <body>
+
+<h1>BMP Suite Image List</h1>
+
+<p>This document shows the allegedly correct way to interpret the BMP
+images in <i>BMP Suite</i>, using PNG images for reference.
+</p>
+
+<p>It also shows how your web browser displays the BMP images.
+But that&rsquo;s not its main purpose.
+BMP is poor image format to use on web pages, so it&rsquo;s probably
+not very important for a web browser to support it.</p>
 
 <table border=1 cellpadding=8>
 
@@ -18,6 +30,7 @@
   <th>File</th>
   <th>Correct display</th>
   <th>In your browser</th>
+  <th>Notes</th>
  </tr>
 
  <tr>
@@ -39,7 +52,7 @@
  </tr>
 
  <tr>
-  <td>q/pal1p1.bmp</td>
+  <td class=q>q/pal1p1.bmp</td>
   <td class=b><img src="pal1p1.png"></td>
   <td class=b><img src="../q/pal1p1.bmp"></td>
  </tr>
@@ -81,13 +94,13 @@
  </tr>
 
  <tr>
-  <td>q/pal8topdown.bmp</td>
+  <td class=q>q/pal8topdown.bmp</td>
   <td class=b><img src="pal8.png"></td>
   <td class=b><img src="../q/pal8topdown.bmp"></td>
  </tr>
 
  <tr>
-  <td>q/pal8oversizepal.bmp</td>
+  <td class=q>q/pal8oversizepal.bmp</td>
   <td class=b><img src="pal8.png"></td>
   <td class=b><img src="../q/pal8oversizepal.bmp"></td>
  </tr>
@@ -124,7 +137,7 @@
   <td>g/rgb16.bmp</td>
   <td class=b><img src="rgb16.png"></td>
   <td class=b><img src="../g/rgb16.bmp"></td>
-  <td>Note: The whitest colors should be
+  <td>The whitest colors should be
    <span style="background-color:rgb(255,255,255)">(255,255,255)</span>, not
    <span style="background-color:rgb(248,248,248)">(248,248,248)</span>.</td>
  </tr>
@@ -133,9 +146,21 @@
   <td>g/rgb16-565.bmp</td>
   <td class=b><img src="rgb16-565.png"></td>
   <td class=b><img src="../g/rgb16-565.bmp"></td>
-  <td>Note: The whitest colors should be
+  <td>The whitest colors should be
    <span style="background-color:rgb(255,255,255)">(255,255,255)</span>, not
    <span style="background-color:rgb(248,252,248)">(248,252,248)</span>.</td>
+ </tr>
+
+ <tr>
+  <td class=q>q/rgb16-231.bmp</td>
+  <td class=b><img src="rgb16-231.png"></td>
+  <td class=b><img src="../q/rgb16-231.bmp"></td>
+ </tr>
+
+ <tr>
+  <td class=q>q/rgba16-4444.bmp</td>
+  <td class=b><img src="rgba16-4444.png"></td>
+  <td class=b><img src="../q/rgba16-4444.bmp"></td>
  </tr>
 
  <tr>
@@ -163,31 +188,19 @@
  </tr>
 
  <tr>
-  <td>q/rgb32fakealpha.bmp</td>
+  <td class=q>q/rgb32fakealpha.bmp</td>
   <td class=b><img src="rgb24.png"></td>
   <td class=b><img src="../q/rgb32fakealpha.bmp"></td>
  </tr>
 
  <tr>
-  <td>q/rgb32-111110.bmp</td>
+  <td class=q>q/rgb32-111110.bmp</td>
   <td class=b><img src="rgb24.png"></td>
   <td class=b><img src="../q/rgb32-111110.bmp"></td>
  </tr>
 
  <tr>
-  <td>q/rgb16-231.bmp</td>
-  <td class=b><img src="rgb16-231.png"></td>
-  <td class=b><img src="../q/rgb16-231.bmp"></td>
- </tr>
-
- <tr>
-  <td>q/rgba16-4444.bmp</td>
-  <td class=b><img src="rgba16-4444.png"></td>
-  <td class=b><img src="../q/rgba16-4444.bmp"></td>
- </tr>
-
- <tr>
-  <td>q/rgba32.bmp</td>
+  <td class=q>q/rgba32.bmp</td>
   <td class=b><img src="rgba32.png"></td>
   <td class=b><img src="../q/rgba32.bmp"></td>
  </tr>
