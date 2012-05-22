@@ -112,7 +112,8 @@ static void set_uint32(struct context *c, size_t offset, unsigned int v)
 static int scale_to_int(double x, int m)
 {
 	int s;
-	s = (int)(0.5+x*m);
+#define BMPSUITE_EPSILON 0.0000001
+	s = (int)(0.5+BMPSUITE_EPSILON+x*m);
 	if(s<0) s=0;
 	if(s>m) s=m;
 	return s;
