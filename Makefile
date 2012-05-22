@@ -5,7 +5,7 @@ LDFLAGS:=-lm
 
 all: stamp
 
-.PHONY: all clean check
+.PHONY: all clean check check2
 
 ifeq ($(OS),Windows_NT)
 BMPSUITE:=bmpsuite.exe
@@ -25,11 +25,18 @@ stamp: $(BMPSUITE)
 	./$(BMPSUITE)
 	touch stamp
 
-check: stamp
-	md5sum g/* q/* b/* > checksums.tmp
+checksums checksums.tmp: stamp
+	md5sum g/* q/* b/* > $@
+
+# check2 is not portable, due to difference in sort order and md5sum's output.
+# But it's useful for development, because it can find unlisted files.
+check2: checksums.tmp
 	diff checksums checksums.tmp
 	@echo OK
 	@rm -f checksums.tmp
+
+check: stamp
+	md5sum --check --warn checksums
 
 clean:
 	rm -f $(BMPSUITE) *.o
