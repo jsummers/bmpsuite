@@ -368,8 +368,10 @@ static void write_palette(struct context *c)
 	size_t offs;
 	int i;
 	int r,g,b;
+	int bppe; // bytes per palette entry
 
 	offs = 14+c->headersize+c->bitfieldssize;
+	bppe = (c->bmpversion<3) ? 3 : 4;
 
 	if(c->bpp==8) {
 		// R6G7B6 palette
@@ -379,9 +381,9 @@ static void write_palette(struct context *c)
 			r = i%6;
 			g = (i%42)/6;
 			b = i/42;
-			c->mem[offs+4*i+2] = scale_to_int( ((double)r)/5.0, 255);
-			c->mem[offs+4*i+1] = scale_to_int( ((double)g)/6.0, 255);
-			c->mem[offs+4*i+0] = scale_to_int( ((double)b)/5.0, 255);
+			c->mem[offs+bppe*i+2] = scale_to_int( ((double)r)/5.0, 255);
+			c->mem[offs+bppe*i+1] = scale_to_int( ((double)g)/6.0, 255);
+			c->mem[offs+bppe*i+0] = scale_to_int( ((double)b)/5.0, 255);
 		}
 	}
 	else if(c->bpp==4) {
@@ -442,6 +444,15 @@ static void write_fileheader(struct context *c)
 	set_int32(c,10,c->bitsoffset);
 }
 
+static void write_bitmapcoreheader(struct context *c)
+{
+	set_int32(c,14+0,c->headersize);
+	set_int16(c,14+4,c->w);
+	set_int16(c,14+6,c->h);
+	set_int16(c,14+8,1); // planes
+	set_int16(c,14+10,c->bpp);
+}
+
 static void write_bitmapinfoheader(struct context *c)
 {
 	set_int32(c,14+0,c->headersize);
@@ -475,7 +486,10 @@ static void make_bmp(struct context *c)
 	write_bitfields(c);
 	write_palette(c);
 	write_bits(c);
-	write_bitmapinfoheader(c);
+	if(c->bmpversion<3)
+		write_bitmapcoreheader(c);
+	else
+		write_bitmapinfoheader(c);
 	write_fileheader(c);
 }
 
@@ -506,6 +520,9 @@ static void set_calculated_fields(struct context *c)
 	if(c->bmpversion==5) {
 		c->headersize = 124;
 	}
+	else if(c->bmpversion==2) {
+		c->headersize = 12;
+	}
 	else {
 		c->headersize = 40;
 	}
@@ -523,7 +540,14 @@ static void set_calculated_fields(struct context *c)
 		c->clr_used = c->pal_entries;
 	}
 
-	c->palettesize = c->pal_entries*4;
+	if(c->bmpversion<3) {
+		c->pal_entries = 1<<c->bpp;
+		c->clr_used = c->pal_entries;
+		c->palettesize = c->pal_entries*3;
+	}
+	else {
+		c->palettesize = c->pal_entries*4;
+	}
 
 	c->bitsoffset = 14 + c->headersize + c->bitfieldssize + c->palettesize;
 }
@@ -570,6 +594,12 @@ static int run(struct context *c)
 
 	defaultbmp(c);
 	c->filename = "g/pal8.bmp";
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "g/pal8v2.bmp";
+	c->bmpversion = 2;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
