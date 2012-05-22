@@ -424,9 +424,11 @@ static void write_palette(struct context *c)
 	else if(c->bpp>8) {
 		// Write a 'suggested' palette.
 		for(i=0;i<c->pal_entries;i++) {
-			c->mem[offs+4*i+2] = (unsigned char)(i*15);
-			c->mem[offs+4*i+1] = (unsigned char)(i*15);
-			c->mem[offs+4*i+0] = (unsigned char)(i*15);
+			if(i<=255) {
+				c->mem[offs+4*i+2] = (unsigned char)i;
+				c->mem[offs+4*i+1] = (unsigned char)i;
+				c->mem[offs+4*i+0] = (unsigned char)i;
+			}
 		}
 
 	}
@@ -722,7 +724,7 @@ static int run(struct context *c)
 	defaultbmp(c);
 	c->filename = "g/rgb24pal.bmp";
 	c->bpp = 24;
-	c->pal_entries = 17;
+	c->pal_entries = 300;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
