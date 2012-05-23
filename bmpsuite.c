@@ -66,6 +66,7 @@ struct context {
 	int headersize;
 	int bitfieldssize;
 	int palettesize;
+	int extrabytessize;
 	int bitsoffset; // Offset from beginning of file
 	int bitssize;
 	int w, h;
@@ -586,7 +587,7 @@ static void set_calculated_fields(struct context *c)
 		c->palettesize = c->pal_entries*4;
 	}
 
-	c->bitsoffset = 14 + c->headersize + c->bitfieldssize + c->palettesize;
+	c->bitsoffset = 14 + c->headersize + c->bitfieldssize + c->palettesize + c->extrabytessize;
 }
 
 static void defaultbmp(struct context *c)
@@ -615,6 +616,7 @@ static void defaultbmp(struct context *c)
 	c->alphahack32 = 0;
 	c->halfheight = 0;
 	c->zero_biSizeImage = 0;
+	c->extrabytessize = 0;
 	c->bf_r = c->bf_g = c->bf_b = c->bf_a = 0;
 	c->nbits_r = c->nbits_g = c->nbits_b = c->nbits_a = 0;
 	c->bf_shift_r = c->bf_shift_g = c->bf_shift_b = c->bf_shift_a = 0;
@@ -678,6 +680,12 @@ static int run(struct context *c)
 	c->zero_biSizeImage = 1;
 	set_calculated_fields(c);
 	c->clr_used = 0;
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "q/pal8offs.bmp";
+	c->extrabytessize = 100;
+	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
