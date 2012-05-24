@@ -337,6 +337,110 @@ static void set_pixel(struct context *c, int x, int y,
 	}
 }
 
+static void calc_run_lens_rle4(const unsigned char *row, int *run_lens, int pixels_per_row)
+{
+	int i,k,n;
+
+	for(i=0;i<pixels_per_row;i++) {
+		n=0;
+		for(k=i;k<pixels_per_row;k++) {
+			if(n>=255) break;
+			if(k-i<=1) { n++; continue; } // First two pixels can always be part of the run
+			if(row[k] == row[k-2]) { n++; continue; }
+			break;
+		}
+		run_lens[i] = n;
+	}
+}
+
+static int write_bits_rle4(struct context *c)
+{
+	size_t curpos; // where in c->mem to write to next
+	size_t rowpos;
+	size_t pixels_per_row;
+	unsigned char *row;
+	int *run_lens;
+	size_t i,j;
+	int k;
+	int tmp1, tmp2, tmp3;
+	double r,g,b,a;
+	int npix_left_to_compress;
+	int unc_len;
+	int unc_len_padded;
+
+	curpos = c->bitsoffset;
+	pixels_per_row = c->w;
+	row = malloc(pixels_per_row);
+	if(!row) return 0;
+	run_lens = (int*)malloc(sizeof(int)*pixels_per_row);
+	if(!run_lens) return 0;
+
+	for(j=0;j<c->h;j++) {
+		// Temporarily store the palette indices in row[]
+		for(i=0;i<c->w;i++) {
+			get_pixel_color(c,i,c->h-1-j, &r,&g,&b,&a);
+			tmp1 = ordered_dither(r,1,i,c->h-1-j);
+			tmp2 = ordered_dither(g,2,i,c->h-1-j);
+			tmp3 = ordered_dither(b,1,i,c->h-1-j);
+			row[i] = tmp1 + tmp2*2 + tmp3*6;
+		}
+
+		// Figure out the largest possible run length for each starting pixel.
+		calc_run_lens_rle4(row,run_lens,pixels_per_row);
+
+		npix_left_to_compress = pixels_per_row;
+		rowpos = 0; // index into row[]
+
+		while(rowpos < pixels_per_row) {
+			if(run_lens[rowpos]<5) {
+				int nextrun5;
+				// Consider writing an uncompressed segment
+				
+				// Find next run that's 5 or larger
+				nextrun5 = -1;
+				for(k=rowpos;k<pixels_per_row;k++) {
+					if(run_lens[k]>=5) { nextrun5 = k; break; }
+				}
+				// If there's at least 3(?) pixels before it, write an uncompressed segment.
+				if(k != -1 && k-rowpos >= 3) {
+					unc_len = k-rowpos;
+					unc_len_padded = unc_len + (3-(unc_len+3)%4);
+					c->mem[curpos++] = 0;
+					c->mem[curpos++] = unc_len;
+					for(i=0;i<unc_len_padded;i++) {
+						unsigned char v;
+						if(i<unc_len) v=row[rowpos++];
+						else v=0; // padding
+						if(i%2==0)
+							c->mem[curpos] = v<<4;
+						else
+							c->mem[curpos++] |= v;
+					}
+				}
+			}
+
+			if(rowpos>=pixels_per_row) break;
+
+			// Write a compressed segment
+			c->mem[curpos++] = run_lens[rowpos];
+			c->mem[curpos] = row[rowpos]<<4;
+			if(run_lens[rowpos]>=2)
+				c->mem[curpos] |= row[rowpos+1];
+			curpos++;
+			rowpos += run_lens[rowpos];
+		}
+
+		// Write EOL (0 0) or EOBMP (0 1) marker.
+		c->mem[curpos++] = 0;
+		c->mem[curpos++] = (j==c->h-1) ? 1 : 0;
+	}
+
+	free(row);
+	c->bitssize = curpos - c->bitsoffset;
+	c->mem_used = c->bitsoffset + c->bitssize;
+	return 1;
+}
+
 static void write_bits(struct context *c)
 {
 	int i,j;
@@ -520,7 +624,10 @@ static void make_bmp(struct context *c)
 {
 	write_bitfields(c);
 	write_palette(c);
-	write_bits(c);
+	if(c->compression==2)
+		write_bits_rle4(c);
+	else
+		write_bits(c);
 	if(c->bmpversion<3)
 		write_bitmapcoreheader(c);
 	else
@@ -717,6 +824,14 @@ static int run(struct context *c)
 	defaultbmp(c);
 	c->filename = "g/pal4.bmp";
 	c->bpp = 4;
+	c->pal_entries = 12;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "g/pal4rle.bmp";
+	c->bpp = 4;
+	c->compression = 2;
 	c->pal_entries = 12;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
