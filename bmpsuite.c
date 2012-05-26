@@ -550,13 +550,20 @@ static void write_palette(struct context *c)
 	bppe = (c->bmpversion<3) ? 3 : 4;
 
 	if(c->bpp==8) {
+		if(c->palette_reserve) {
+			c->mem[offs+2] = 128;
+			c->mem[offs+1] = 0;
+			c->mem[offs+0] = 255;
+		}
+
 		// R6G7B6 palette
 		// Entry for a given (R,G,B) is R + G*6 + B*42
-		for(i=0;i<c->pal_entries;i++) {
-			if(i>=252) continue;
-			r = i%6;
-			g = (i%42)/6;
-			b = i/42;
+		for(i=c->palette_reserve;i<c->pal_entries;i++) {
+			ii = i-c->palette_reserve;
+			if(i>=252+c->palette_reserve) continue;
+			r = ii%6;
+			g = (ii%42)/6;
+			b = ii/42;
 			c->mem[offs+bppe*i+2] = scale_to_int( ((double)r)/5.0, 255);
 			c->mem[offs+bppe*i+1] = scale_to_int( ((double)g)/6.0, 255);
 			c->mem[offs+bppe*i+0] = scale_to_int( ((double)b)/5.0, 255);
@@ -802,6 +809,7 @@ static void defaultbmp(struct context *c)
 	c->zero_biSizeImage = 0;
 	c->extrabytessize = 0;
 	c->palette_reserve = 0;
+	c->rletrns = 0;
 	c->bf_r = c->bf_g = c->bf_b = c->bf_a = 0;
 	c->nbits_r = c->nbits_g = c->nbits_b = c->nbits_a = 0;
 	c->bf_shift_r = c->bf_shift_g = c->bf_shift_b = c->bf_shift_a = 0;
@@ -906,6 +914,15 @@ static int run(struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
+	c->filename = "q/pal8rletrns.bmp";
+	c->compression = CMPR_RLE8;
+	c->rletrns = 1;
+	c->pal_entries = 253;
+	c->palette_reserve = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
 	c->filename = "g/pal4.bmp";
 	c->bpp = 4;
 	c->pal_entries = 12;
@@ -923,7 +940,7 @@ static int run(struct context *c)
 	defaultbmp(c);
 	c->filename = "q/pal4rletrns.bmp";
 	c->bpp = 4;
-	c->compression = 2;
+	c->compression = CMPR_RLE4;
 	c->rletrns = 1;
 	c->pal_entries = 13;
 	c->palette_reserve = 1;
