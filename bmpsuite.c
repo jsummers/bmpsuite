@@ -85,6 +85,8 @@ struct context {
 	int alphahack32;
 	int halfheight;
 	int zero_biSizeImage;
+	int rletrns;
+	int palette_reserve; // Reserve palette color #0
 };
 
 static void set_int16(struct context *c, size_t offset, int v)
@@ -151,10 +153,13 @@ static void get_pixel_color(struct context *c, int x, int y,
 					*pr = 0.0; *pg = 1.0; *pb = 0.0; *pa = 0.0;
 				}
 				else {
-					// Make the bootom half a red gradient from transparent to opaque.
+					// Make the bottom half a red gradient from transparent to opaque.
 					*pr = 1.0; *pg = 0.0; *pb = 0.0;
 					*pa = 2*((double)(y-bmpovl_ypos)) /(bmpovl_height) -1.0;
 				}
+			}
+			else if(c->rletrns) {
+				*pr = 1.0; *pg = 1.0; *pb = 1.0; *pa = 0.0;
 			}
 			else {
 				*pr = 1.0; *pg = 1.0; *pb = 1.0; *pa = 1.0;
@@ -337,7 +342,7 @@ static void set_pixel(struct context *c, int x, int y,
 	}
 }
 
-static void calc_run_lens_rle4(const unsigned char *row, int *run_lens, int pixels_per_row)
+static void calc_run_lens_rle4(struct context *c, const unsigned char *row, int *run_lens, int pixels_per_row)
 {
 	int i,k,n;
 
@@ -345,6 +350,21 @@ static void calc_run_lens_rle4(const unsigned char *row, int *run_lens, int pixe
 		n=0;
 		for(k=i;k<pixels_per_row;k++) {
 			if(n>=255) break;
+
+			if(c->rletrns && row[k]==0) {
+				// A "transparent" pixel.
+				if(k-i==0) { n++; continue; } // start of a transparent run
+				if(row[k-1]==0) { n++; continue; } // continuing a transparent run;
+				break; // transparent pixel stops a nontransparent run.
+			}
+
+			if(c->rletrns && k-i>=1) {
+				if(row[k]!=0 && row[k-1]==0) {
+					// nontransparent pixel stops a transparent run.
+					break;
+				}
+			}
+
 			if(k-i<=1) { n++; continue; } // First two pixels can always be part of the run
 			if(row[k] == row[k-2]) { n++; continue; }
 			break;
@@ -382,16 +402,29 @@ static int write_bits_rle4(struct context *c)
 			tmp1 = ordered_dither(r,1,i,c->h-1-j);
 			tmp2 = ordered_dither(g,2,i,c->h-1-j);
 			tmp3 = ordered_dither(b,1,i,c->h-1-j);
-			row[i] = tmp1 + tmp2*2 + tmp3*6;
+			row[i] = c->palette_reserve + tmp1 + tmp2*2 + tmp3*6;
+			if(c->rletrns && a<0.5) {
+				row[i] = 0;
+			}
 		}
 
 		// Figure out the largest possible run length for each starting pixel.
-		calc_run_lens_rle4(row,run_lens,pixels_per_row);
+		calc_run_lens_rle4(c,row,run_lens,pixels_per_row);
 
 		npix_left_to_compress = pixels_per_row;
 		rowpos = 0; // index into row[]
 
 		while(rowpos < pixels_per_row) {
+
+			if(c->rletrns && row[rowpos]==0) { // transparent pixel
+				c->mem[curpos++] = 0;
+				c->mem[curpos++] = 2;
+				c->mem[curpos++] = run_lens[rowpos]; // x delta
+				c->mem[curpos++] = 0; // y delta
+				rowpos += run_lens[rowpos];
+				continue;
+			}
+
 			if(run_lens[rowpos]<5) {
 				int nextrun5;
 				// Consider writing an uncompressed segment
@@ -399,6 +432,7 @@ static int write_bits_rle4(struct context *c)
 				// Find next run that's 5 or larger
 				nextrun5 = -1;
 				for(k=rowpos;k<pixels_per_row;k++) {
+					if(c->rletrns && row[k]==0) { nextrun5 = k; break; } // Also have to stop at a transparent pixel
 					if(run_lens[k]>=5) { nextrun5 = k; break; }
 				}
 				// If there's at least 3(?) pixels before it, write an uncompressed segment.
@@ -416,10 +450,13 @@ static int write_bits_rle4(struct context *c)
 						else
 							c->mem[curpos++] |= v;
 					}
+					continue;
 				}
 			}
 
 			if(rowpos>=pixels_per_row) break;
+
+			if(c->rletrns && row[rowpos]==0) break;
 
 			// Write a compressed segment
 			c->mem[curpos++] = run_lens[rowpos];
@@ -472,7 +509,7 @@ static void write_bitfields(struct context *c)
 static void write_palette(struct context *c)
 {
 	size_t offs;
-	int i;
+	int i, ii;
 	int r,g,b;
 	int bppe; // bytes per palette entry
 
@@ -493,10 +530,17 @@ static void write_palette(struct context *c)
 		}
 	}
 	else if(c->bpp==4) {
-		for(i=0;i<c->pal_entries;i++) {
-			r = i%2;
-			g = (i%6)/2;
-			b = i/6;
+		if(c->palette_reserve) {
+			c->mem[offs+2] = 128;
+			c->mem[offs+1] = 0;
+			c->mem[offs+0] = 255;
+		}
+
+		for(i=c->palette_reserve;i<c->pal_entries;i++) {
+			ii = i-c->palette_reserve;
+			r = ii%2;
+			g = (ii%6)/2;
+			b = ii/6;
 			c->mem[offs+4*i+2] = scale_to_int( ((double)r)/1.0, 255);
 			c->mem[offs+4*i+1] = scale_to_int( ((double)g)/2.0, 255);
 			c->mem[offs+4*i+0] = scale_to_int( ((double)b)/1.0, 255);
@@ -724,6 +768,7 @@ static void defaultbmp(struct context *c)
 	c->halfheight = 0;
 	c->zero_biSizeImage = 0;
 	c->extrabytessize = 0;
+	c->palette_reserve = 0;
 	c->bf_r = c->bf_g = c->bf_b = c->bf_a = 0;
 	c->nbits_r = c->nbits_g = c->nbits_b = c->nbits_a = 0;
 	c->bf_shift_r = c->bf_shift_g = c->bf_shift_b = c->bf_shift_a = 0;
@@ -833,6 +878,16 @@ static int run(struct context *c)
 	c->bpp = 4;
 	c->compression = 2;
 	c->pal_entries = 12;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "q/pal4rletrns.bmp";
+	c->bpp = 4;
+	c->compression = 2;
+	c->rletrns = 1;
+	c->pal_entries = 13;
+	c->palette_reserve = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
