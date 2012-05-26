@@ -72,6 +72,8 @@ struct context {
 	int w, h;
 	int rowsize;
 	int xpelspermeter, ypelspermeter;
+#define CMPR_RLE8 1
+#define CMPR_RLE4 2
 	int compression;
 
 	int pal_wb; // 2-color, palette[0] = white
@@ -342,7 +344,8 @@ static void set_pixel(struct context *c, int x, int y,
 	}
 }
 
-static void calc_run_lens_rle4(struct context *c, const unsigned char *row, int *run_lens, int pixels_per_row)
+static void calc_rle_run_lens(struct context *c, const unsigned char *row,
+    int *run_lens, int pixels_per_row)
 {
 	int i,k,n;
 
@@ -365,15 +368,19 @@ static void calc_run_lens_rle4(struct context *c, const unsigned char *row, int 
 				}
 			}
 
-			if(k-i<=1) { n++; continue; } // First two pixels can always be part of the run
-			if(row[k] == row[k-2]) { n++; continue; }
+			if(c->compression==CMPR_RLE4 && k-i<=1) { n++; continue; } // (RLE4) First two pixels can always be part of the run
+			if(c->compression==CMPR_RLE8 && k-i<=0) { n++; continue; } // (RLE8) First pixels can always be part of the run
+			if(c->compression==CMPR_RLE4 && row[k]==row[k-2]) { n++; continue; }
+			if(c->compression==CMPR_RLE8 && row[k]==row[k-1]) { n++; continue; }
 			break;
 		}
 		run_lens[i] = n;
 	}
 }
 
-static int write_bits_rle4(struct context *c)
+// Note: This is not a particularly good BMP RLE compression algorithm.
+// I don't recommend copying it.
+static int write_bits_rle(struct context *c)
 {
 	size_t curpos; // where in c->mem to write to next
 	size_t rowpos;
@@ -384,9 +391,9 @@ static int write_bits_rle4(struct context *c)
 	int k;
 	int tmp1, tmp2, tmp3;
 	double r,g,b,a;
-	int npix_left_to_compress;
 	int unc_len;
 	int unc_len_padded;
+	int thresh;
 
 	curpos = c->bitsoffset;
 	pixels_per_row = c->w;
@@ -394,24 +401,33 @@ static int write_bits_rle4(struct context *c)
 	if(!row) return 0;
 	run_lens = (int*)malloc(sizeof(int)*pixels_per_row);
 	if(!run_lens) return 0;
+	thresh = c->compression==CMPR_RLE4 ? 5 : 4;
 
 	for(j=0;j<c->h;j++) {
 		// Temporarily store the palette indices in row[]
 		for(i=0;i<c->w;i++) {
 			get_pixel_color(c,i,c->h-1-j, &r,&g,&b,&a);
-			tmp1 = ordered_dither(r,1,i,c->h-1-j);
-			tmp2 = ordered_dither(g,2,i,c->h-1-j);
-			tmp3 = ordered_dither(b,1,i,c->h-1-j);
-			row[i] = c->palette_reserve + tmp1 + tmp2*2 + tmp3*6;
+
+			if(c->compression==CMPR_RLE4) {
+				tmp1 = ordered_dither(r,1,i,c->h-1-j);
+				tmp2 = ordered_dither(g,2,i,c->h-1-j);
+				tmp3 = ordered_dither(b,1,i,c->h-1-j);
+				row[i] = c->palette_reserve + tmp1 + tmp2*2 + tmp3*6;
+			}
+			else {
+				tmp1 = ordered_dither(r,5,i,c->h-1-j);
+				tmp2 = ordered_dither(g,6,i,c->h-1-j);
+				tmp3 = ordered_dither(b,5,i,c->h-1-j);
+				row[i] = c->palette_reserve + tmp1 + tmp2*6 + tmp3*42;
+			}
 			if(c->rletrns && a<0.5) {
 				row[i] = 0;
 			}
 		}
 
 		// Figure out the largest possible run length for each starting pixel.
-		calc_run_lens_rle4(c,row,run_lens,pixels_per_row);
+		calc_rle_run_lens(c,row,run_lens,pixels_per_row);
 
-		npix_left_to_compress = pixels_per_row;
 		rowpos = 0; // index into row[]
 
 		while(rowpos < pixels_per_row) {
@@ -425,30 +441,41 @@ static int write_bits_rle4(struct context *c)
 				continue;
 			}
 
-			if(run_lens[rowpos]<5) {
-				int nextrun5;
+			if(run_lens[rowpos]<thresh) {
+				int nextstop;
 				// Consider writing an uncompressed segment
 				
-				// Find next run that's 5 or larger
-				nextrun5 = -1;
+				// Find next run that's 'thresh' or larger
+				nextstop = -1;
 				for(k=rowpos;k<pixels_per_row;k++) {
-					if(c->rletrns && row[k]==0) { nextrun5 = k; break; } // Also have to stop at a transparent pixel
-					if(run_lens[k]>=5) { nextrun5 = k; break; }
+					if(c->rletrns && row[k]==0) { nextstop = k; break; } // Also have to stop at a transparent pixel
+					if(run_lens[k]>=thresh) { nextstop = k; break; }
 				}
 				// If there's at least 3(?) pixels before it, write an uncompressed segment.
 				if(k != -1 && k-rowpos >= 3) {
 					unc_len = k-rowpos;
-					unc_len_padded = unc_len + (3-(unc_len+3)%4);
+
+					if(c->compression==CMPR_RLE4)
+						unc_len_padded = unc_len + (3-(unc_len+3)%4);
+					else
+						unc_len_padded = unc_len + (unc_len%2);
+
 					c->mem[curpos++] = 0;
 					c->mem[curpos++] = unc_len;
 					for(i=0;i<unc_len_padded;i++) {
 						unsigned char v;
 						if(i<unc_len) v=row[rowpos++];
 						else v=0; // padding
-						if(i%2==0)
-							c->mem[curpos] = v<<4;
-						else
-							c->mem[curpos++] |= v;
+
+						if(c->compression==CMPR_RLE4) {
+							if(i%2==0)
+								c->mem[curpos] = v<<4;
+							else
+								c->mem[curpos++] |= v;
+						}
+						else {
+							c->mem[curpos++] = v;
+						}
 					}
 					continue;
 				}
@@ -460,9 +487,15 @@ static int write_bits_rle4(struct context *c)
 
 			// Write a compressed segment
 			c->mem[curpos++] = run_lens[rowpos];
-			c->mem[curpos] = row[rowpos]<<4;
-			if(run_lens[rowpos]>=2)
-				c->mem[curpos] |= row[rowpos+1];
+
+			if(c->compression==CMPR_RLE4) {
+				c->mem[curpos] = row[rowpos]<<4;
+				if(run_lens[rowpos]>=2)
+					c->mem[curpos] |= row[rowpos+1];
+			}
+			else {
+				c->mem[curpos] = row[rowpos];
+			}
 			curpos++;
 			rowpos += run_lens[rowpos];
 		}
@@ -668,8 +701,8 @@ static void make_bmp(struct context *c)
 {
 	write_bitfields(c);
 	write_palette(c);
-	if(c->compression==2)
-		write_bits_rle4(c);
+	if(c->compression==CMPR_RLE4 || c->compression==CMPR_RLE8)
+		write_bits_rle(c);
 	else
 		write_bits(c);
 	if(c->bmpversion<3)
@@ -867,6 +900,12 @@ static int run(struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
+	c->filename = "g/pal8rle.bmp";
+	c->compression = CMPR_RLE8;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
 	c->filename = "g/pal4.bmp";
 	c->bpp = 4;
 	c->pal_entries = 12;
@@ -876,7 +915,7 @@ static int run(struct context *c)
 	defaultbmp(c);
 	c->filename = "g/pal4rle.bmp";
 	c->bpp = 4;
-	c->compression = 2;
+	c->compression = CMPR_RLE4;
 	c->pal_entries = 12;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
