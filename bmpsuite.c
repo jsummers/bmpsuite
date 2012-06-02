@@ -87,6 +87,12 @@ struct context {
 	int alphahack32;
 	int halfheight;
 	int zero_biSizeImage;
+	int bad_biSizeImage;
+	int bad_bfSize;
+	int bad_width;
+	int bad_bitcount;
+	int bad_planes;
+	int bad_palettesize;
 	int rletrns;
 	int palette_reserve; // Reserve palette color #0
 };
@@ -630,7 +636,10 @@ static void write_fileheader(struct context *c)
 {
 	c->mem[0]='B';
 	c->mem[1]='M';
-	set_int32(c,2,(int)c->mem_used);
+	if(c->bad_bfSize)
+		set_int32(c,2,0x7ddddddd);
+	else
+		set_int32(c,2,(int)c->mem_used);
 	set_int32(c,10,c->bitsoffset);
 }
 
@@ -648,15 +657,21 @@ static void write_bitmapinfoheader(struct context *c)
 	double gamma;
 
 	set_int32(c,14+0,c->headersize);
-	set_int32(c,14+4,c->w);
+	set_int32(c,14+4,(c->bad_width) ? -c->w : c->w); // biWidth
 	set_int32(c,14+8,(c->topdown) ? -c->h : c->h);
-	set_int16(c,14+12,1); // planes
-	set_int16(c,14+14,c->bpp);
+	set_int16(c,14+12,(c->bad_planes) ? 30000 : 1); // biPlanes
+	set_int16(c,14+14,(c->bad_bitcount) ? 30000 : c->bpp); // biBitCount
 	set_int32(c,14+16,c->compression);
-	set_int32(c,14+20,c->zero_biSizeImage ? 0 : c->bitssize);
+	if(c->zero_biSizeImage)
+		set_int32(c,14+20,0);
+	else if(c->bad_biSizeImage)
+		set_int32(c,14+20,0x7eeeeeee);
+	else
+		set_int32(c,14+20,c->bitssize);
+
 	set_int32(c,14+24,c->xpelspermeter);
 	set_int32(c,14+28,c->ypelspermeter);
-	set_int32(c,14+32,c->clr_used); // biClrUsed
+	set_int32(c,14+32,(c->bad_palettesize) ? 0x12341234 : c->clr_used); // biClrUsed
 	set_int32(c,14+36,0); // biClrImportant
 
 	if(c->bmpversion>=4) {
@@ -807,6 +822,12 @@ static void defaultbmp(struct context *c)
 	c->alphahack32 = 0;
 	c->halfheight = 0;
 	c->zero_biSizeImage = 0;
+	c->bad_biSizeImage = 0;
+	c->bad_bfSize = 0;
+	c->bad_width = 0;
+	c->bad_bitcount = 0;
+	c->bad_planes = 0;
+	c->bad_palettesize = 0;
 	c->extrabytessize = 0;
 	c->palette_reserve = 0;
 	c->rletrns = 0;
@@ -894,6 +915,12 @@ static int run(struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
+	c->filename = "b/badpalettesize.bmp";
+	c->bad_palettesize = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
 	c->filename = "q/pal8topdown.bmp";
 	c->topdown = 1;
 	set_calculated_fields(c);
@@ -975,6 +1002,46 @@ static int run(struct context *c)
 	c->bpp = 1;
 	c->pal_entries = 1;
 	c->pal_p1 = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "b/badbitssize.bmp";
+	c->bpp = 1;
+	c->pal_entries = 2;
+	c->bad_biSizeImage = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "b/badfilesize.bmp";
+	c->bpp = 1;
+	c->pal_entries = 2;
+	c->bad_bfSize = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "b/badwidth.bmp";
+	c->bpp = 1;
+	c->pal_entries = 2;
+	c->bad_width = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "b/badbitcount.bmp";
+	c->bpp = 1;
+	c->pal_entries = 2;
+	c->bad_bitcount = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "b/badplanes.bmp";
+	c->bpp = 1;
+	c->pal_entries = 2;
+	c->bad_planes = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
