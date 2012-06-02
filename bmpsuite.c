@@ -336,6 +336,25 @@ static void set_pixel(struct context *c, int x, int y,
 		else
 			c->mem[c->bitsoffset+offs] |= p<<4;
 	}
+	else if(c->bpp==2) {
+		const double gray1 = 0.0908417111646935; // = srgb_to_linear(1/3)
+		const double gray2 = 0.4019777798321956; // = srgb_to_linear(2/3)
+		offs = row_offs + x/4;
+		tmpd = srgb_to_linear(r)*0.212655
+			 + srgb_to_linear(g)*0.715158
+			 + srgb_to_linear(b)*0.072187;
+
+		if(tmpd<gray1) {
+			tmp1 = ordered_dither_lowlevel(tmpd/gray1,x,y) ? 1 : 0;
+		}
+		else if(tmpd<gray2) {
+			tmp1 = ordered_dither_lowlevel((tmpd-gray1)/(gray2-gray1),x,y) ? 2 : 1;
+		}
+		else {
+			tmp1 = ordered_dither_lowlevel((tmpd-gray2)/(1.0-gray2),x,y) ? 3 : 2;
+		}
+		c->mem[c->bitsoffset+offs] |= tmp1<<(2*(3-x%4));
+	}
 	else if(c->bpp==1) {
 		offs = row_offs + x/8;
 		tmpd = srgb_to_linear(r)*0.212655
@@ -590,6 +609,14 @@ static void write_palette(struct context *c)
 			c->mem[offs+4*i+2] = scale_to_int( ((double)r)/1.0, 255);
 			c->mem[offs+4*i+1] = scale_to_int( ((double)g)/2.0, 255);
 			c->mem[offs+4*i+0] = scale_to_int( ((double)b)/1.0, 255);
+		}
+	}
+	else if(c->bpp==2) {
+		for(i=0;i<4;i++) {
+			// A 4-shade grayscale palette
+			c->mem[offs+4*i+2] = 85*i;
+			c->mem[offs+4*i+1] = 85*i;
+			c->mem[offs+4*i+0] = 85*i;
 		}
 	}
 	else if(c->bpp==1) {
@@ -1042,6 +1069,13 @@ static int run(struct context *c)
 	c->bpp = 1;
 	c->pal_entries = 2;
 	c->bad_planes = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "b/pal2.bmp";
+	c->bpp = 2;
+	c->pal_entries = 4;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
