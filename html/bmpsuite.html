@@ -37,36 +37,47 @@ not very important for a web browser to support it.</p>
   <td>g/pal1.bmp</td>
   <td class=b><img src="pal1.png"></td>
   <td class=b><img src="../g/pal1.bmp"></td>
+  <td>1 bit/pixel paletted image, in which black is the first color in
+   the palette.</td>
  </tr>
 
  <tr>
   <td>g/pal1wb.bmp</td>
   <td class=b><img src="pal1.png"></td>
   <td class=b><img src="../g/pal1wb.bmp"></td>
+  <td>1 bit/pixel paletted image, in which white is the first color in
+   the palette.</td>
  </tr>
 
  <tr>
   <td>g/pal1bg.bmp</td>
   <td class=b><img src="pal1bg.png"></td>
   <td class=b><img src="../g/pal1bg.bmp"></td>
+  <td>1 bit/pixel paletted image, with colors other than black and white.</td>
  </tr>
 
  <tr>
   <td class=q>q/pal1p1.bmp</td>
   <td class=b><img src="pal1p1.png"></td>
   <td class=b><img src="../q/pal1p1.bmp"></td>
+  <td>1 bit/pixel paletted image, with only one color in the palette.
+   The documentation says that 1bpp images have a palette size of 2
+   (not &ldquo;up to 2&rdquo;), but it would be silly for a viewer not to support a
+   size of 1.</td>
  </tr>
 
  <tr>
   <td>g/pal4.bmp</td>
   <td class=b><img src="pal4.png"></td>
   <td class=b><img src="../g/pal4.bmp"></td>
+  <td>Paletted image with 12 palette colors, and 4 bits/pixel.</td>
  </tr>
 
  <tr>
   <td>g/pal4rle.bmp</td>
   <td class=b><img src="pal4.png"></td>
   <td class=b><img src="../g/pal4rle.bmp"></td>
+  <td>4-bit image that uses RLE compression.</td>
  </tr>
 
  <tr>
@@ -75,38 +86,52 @@ not very important for a web browser to support it.</p>
      or<br><img src="pal4rletrns-0.png"><br>
      or<br><img src="pal4rletrns-b.png"></td>
   <td class=b><img src="../q/pal4rletrns.bmp"></td>
+  <td>An RLE-compressed image that used &ldquo;delta&rdquo;
+  codes to skip over some pixels, leaving them undefined. Some viewers
+  make undefined pixels transparent, others make them black, and
+  others assign them palette color 0 (purple, in this case).</td>
  </tr>
 
  <tr>
   <td>g/pal8.bmp</td>
   <td class=b><img src="pal8.png"></td>
   <td class=b><img src="../g/pal8.bmp"></td>
+  <td>Our standard (version 3) paletted image, with 252 palette colors, and 8
+   bits/pixel.</td>
  </tr>
 
  <tr>
   <td>g/pal8-0.bmp</td>
   <td class=b><img src="pal8.png"></td>
   <td class=b><img src="../g/pal8-0.bmp"></td>
+  <td>Every field that can be set to 0 is set to 0: pixels/meter=0;
+   colors used=0 (meaning the default 256); size-of-image=0 (this field is
+   largely superfluous).</td>
  </tr>
 
  <tr>
   <td>g/pal8rle.bmp</td>
   <td class=b><img src="pal8.png"></td>
   <td class=b><img src="../g/pal8rle.bmp"></td>
+  <td>8-bit image that uses RLE compression.</td>
  </tr>
 
  <tr>
   <td class=q>q/pal8rletrns.bmp</td>
-  <td class=b><img src="pal8rletrns.png"><br>
+  <td class=b><img src="pal8rletrns.png"><br>  
      or<br><img src="pal8rletrns-0.png"><br>
      or<br><img src="pal8rletrns-b.png"></td>
   <td class=b><img src="../q/pal8rletrns.bmp"></td>
+  <td>8-bit version of q/pal4rletrns.bmp.</td>
  </tr>
 
  <tr>
   <td>g/pal8w126.bmp</td>
   <td class=b><img src="pal8w126.png"></td>
   <td class=b><img src="../g/pal8w126.bmp"></td>
+  <td rowspan=3>Images with different widths.
+   In BMP format, rows are padded to a multiple of four bytes, so we
+   test all four possibilities.</td>
  </tr>
 
  <tr>
@@ -125,18 +150,28 @@ not very important for a web browser to support it.</p>
   <td class=q>q/pal8topdown.bmp</td>
   <td class=b><img src="pal8.png"></td>
   <td class=b><img src="../q/pal8topdown.bmp"></td>
+  <td>BMP images normally are stored from the botttom up, but
+   there is a way to store them from the top down. I have no
+   reason to think it&rsquo;s invalid to store such an image in a BMP
+   file, but it is unusual.</td>
  </tr>
 
  <tr>
   <td class=q>q/pal8offs.bmp</td>
   <td class=b><img src="pal8.png"></td>
   <td class=b><img src="../q/pal8offs.bmp"></td>
+  <td>A file with some unused bytes between the palette and the
+   image. This is probably valid, but I&rsquo;m not 100% sure.</td>
  </tr>
 
  <tr>
   <td class=q>q/pal8oversizepal.bmp</td>
   <td class=b><img src="pal8.png"></td>
   <td class=b><img src="../q/pal8oversizepal.bmp"></td>
+  <td>An 8-bit imagew with 300 palette colors. This may be invalid,
+   because the documentation could
+   be interpreted to imply that 8-bit images aren&rsquo;t allowed
+   to have more than 256 colors.</td>
  </tr>
 
  <tr>
@@ -147,31 +182,43 @@ not very important for a web browser to support it.</p>
    <img src="pal8nonsquare-e.png">
   </td>
   <td class=b><img src="../g/pal8nonsquare.bmp"></td>
+  <td>An image with non-square pixels: the X pixels/meter is twice
+   the Y pixels/meter. Image <i>editors</i> can be expected to
+   leave the image &ldquo;squashed&rdquo;; most image <i>viewers</i> really
+   ought to stretch it to the correct proportions.</td>
  </tr>
 
  <tr>
   <td>g/pal8v2.bmp</td>
   <td class=b><img src="pal8.png"></td>
   <td class=b><img src="../g/pal8v2.bmp"></td>
+  <td>An OS/2-style bitmap, sometimes called &ldquo;version 2&rdquo;.</td>
  </tr>
 
  <tr>
   <td>g/pal8v4.bmp</td>
   <td class=b><img src="pal8.png"></td>
   <td class=b><img src="../g/pal8v4.bmp"></td>
+  <td>A v4 bitmap. I&rsquo;m not sure that the gamma and chromaticity values in
+   this file are sensible, because I can&rsquo;t find any detailed documentation
+   of them.</td>
  </tr>
 
  <tr>
   <td>g/pal8v5.bmp</td>
   <td class=b><img src="pal8.png"></td>
   <td class=b><img src="../g/pal8v5.bmp"></td>
+  <td>A v5 bitmap. Version 5 has additional colorspace options over v4, so it
+   is easier to create, and ought to be more portable.</td>
  </tr>
 
  <tr>
   <td>g/rgb16.bmp</td>
   <td class=b><img src="rgb16.png"></td>
   <td class=b><img src="../g/rgb16.bmp"></td>
-  <td>The whitest colors should be
+  <td>A 16-bit image with the default color format: 5 bits each for red,
+   green, and blue, and 1 unused bit.
+   The whitest colors should be
    <span style="background-color:rgb(255,255,255)">(255,255,255)</span>, not
    <span style="background-color:rgb(248,248,248)">(248,248,248)</span>.</td>
  </tr>
@@ -180,7 +227,11 @@ not very important for a web browser to support it.</p>
   <td>g/rgb16-565.bmp</td>
   <td class=b><img src="rgb16-565.png"></td>
   <td class=b><img src="../g/rgb16-565.bmp"></td>
-  <td>The whitest colors should be
+  <td>A 16-bit image with a BITFIELDS segment indicating 5 red, 6 green,
+   and 5 blue bits. This is a standard 16-bit format, even supported by
+   old versions of Windows that don&rsquo;t support any other non-default 16-bit
+   format.
+   The whitest colors should be
    <span style="background-color:rgb(255,255,255)">(255,255,255)</span>, not
    <span style="background-color:rgb(248,252,248)">(248,252,248)</span>.</td>
  </tr>
@@ -189,54 +240,87 @@ not very important for a web browser to support it.</p>
   <td class=q>q/rgb16-231.bmp</td>
   <td class=b><img src="rgb16-231.png"></td>
   <td class=b><img src="../q/rgb16-231.bmp"></td>
+  <td>An unusual and silly 16-bit image, with 2 red bits, 3 green bits, and 1
+  blue bit. Most viewers do support this image, but the colors may be darkened
+  with a yellow-green shadow. That&rsquo;s because they&rsquo;re doing simple
+  bit-shifting, instead of proper scaling.</td>
  </tr>
 
  <tr>
   <td class=q>q/rgba16-4444.bmp</td>
   <td class=b><img src="rgba16-4444.png"></td>
   <td class=b><img src="../q/rgba16-4444.bmp"></td>
+  <td>A v5 16-bit image with an alpha channel. There are 4 bits for each color
+   channel, and 4 bits for the alpha channel.
+   It&rsquo;s not clear if this is valid, but I can&rsquo;t find anything that
+   suggests it isn&rsquo;t.
+   </td>
  </tr>
 
  <tr>
   <td>g/rgb24.bmp</td>
   <td class=b><img src="rgb24.png"></td>
   <td class=b><img src="../g/rgb24.bmp"></td>
+  <td>A perfectly ordinary 24-bit (truecolor) image. If a viewer can&rsquo;t handle this, it
+   can&rsquo;t handle anything.</td>
  </tr>
 
  <tr>
   <td>g/rgb24pal.bmp</td>
   <td class=b><img src="rgb24.png"></td>
   <td class=b><img src="../g/rgb24pal.bmp"></td>
+  <td>A 24-bit image, with a palette containing 300 colors. There is little if
+   any reason for a truecolor image to contain a palette, but it is legal.
+   The fact that the palette has more than 256 colors may cause some viewers
+   to complain, but the documentation does not mention a size limit.</td>
  </tr>
 
  <tr>
   <td>g/rgb32.bmp</td>
   <td class=b><img src="rgb24.png"></td>
   <td class=b><img src="../g/rgb32.bmp"></td>
+  <td>A 32-bit image using the default color format for 32-bit images (no
+   BITFIELDS segment). There are 8 bits per color channel, and 8 unused
+   bits. The unused bits are set to 0.</td>
  </tr>
 
  <tr>
   <td>g/rgb32bf.bmp</td>
   <td class=b><img src="rgb24.png"></td>
   <td class=b><img src="../g/rgb32bf.bmp"></td>
+  <td>A 32-bit image with a BITFIELDS segment. As usual, there are 8 bits per
+   color channel, and 8 unused bits. But the color channels are in an unusual
+   order, so the viewer must read the BITFIELDS, and not just guess.</td>
  </tr>
 
  <tr>
   <td class=q>q/rgb32fakealpha.bmp</td>
   <td class=b><img src="rgb24.png"></td>
   <td class=b><img src="../q/rgb32fakealpha.bmp"></td>
+  <td>Same as g/rgb32.bmp, except that the unused bytes are set to something
+   other than 0.
+   This: <img class=b src="fakealpha.png"> is acceptable, but it means
+   the viewer is most likely using heuristics to guess whether the undefined
+   data represents transparency.</td>
  </tr>
 
  <tr>
   <td class=q>q/rgb32-111110.bmp</td>
   <td class=b><img src="rgb24.png"></td>
   <td class=b><img src="../q/rgb32-111110.bmp"></td>
+  <td>A 32 bits/pixel image, with all 32 bits used: 11 each for the red and
+   green, and 10 for blue. As far as I know, this is perfectly valid, but it
+   is unusual.</td>
  </tr>
 
  <tr>
   <td class=q>q/rgba32.bmp</td>
   <td class=b><img src="rgba32.png"></td>
   <td class=b><img src="../q/rgba32.bmp"></td>
+  <td>A v5 BMP with an alpha channel. Transparency is barely documented,
+   so it&rsquo;s <i>possible</i> that this file is not correctly formed.
+   The color channels are in an unusual order, to prevent viewers from
+   passing this test by making a lucky guess.</td>
  </tr>
 
 </table>
