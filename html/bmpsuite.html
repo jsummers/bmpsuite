@@ -16,7 +16,7 @@
 <h1>BMP Suite Image List</h1>
 
 <p>This document shows the allegedly correct way to interpret the BMP
-images in <i>BMP Suite</i>, using PNG images for reference.
+images in <i>BMP Suite</i>, using PNG and JPEG images for reference.
 </p>
 
 <p>It also shows how your web browser displays the BMP images.
@@ -168,7 +168,7 @@ not very important for a web browser to support it.</p>
   <td class=q>q/pal8oversizepal.bmp</td>
   <td class=b><img src="pal8.png"></td>
   <td class=b><img src="../q/pal8oversizepal.bmp"></td>
-  <td>An 8-bit imagew with 300 palette colors. This may be invalid,
+  <td>An 8-bit image with 300 palette colors. This may be invalid,
    because the documentation could
    be interpreted to imply that 8-bit images aren&rsquo;t allowed
    to have more than 256 colors.</td>
@@ -273,6 +273,20 @@ not very important for a web browser to support it.</p>
    any reason for a truecolor image to contain a palette, but it is legal.
    The fact that the palette has more than 256 colors may cause some viewers
    to complain, but the documentation does not mention a size limit.</td>
+ </tr>
+
+ <tr>
+  <td class=q>q/rgb24jpeg.bmp</td>
+  <td class=b><img src="rgb24.jpg"></td>
+  <td class=b><img src="../q/rgb24jpeg.bmp"></td>
+  <td rowspan=2>My attempt to make BMP files with embedded JPEG and PNG images.
+   Hardly anything can read them, so maybe I did it wrong.</td>
+ </tr>
+
+ <tr>
+  <td class=q>q/rgb24jpeg.bmp</td>
+  <td class=b><img src="rgb24.png"></td>
+  <td class=b><img src="../q/rgb24png.bmp"></td>
  </tr>
 
  <tr>
