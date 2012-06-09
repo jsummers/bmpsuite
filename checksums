@@ -36,6 +36,7 @@ f9ac82a0bb4be51815f0a58391768ef0 *q/pal8oversizepal.bmp
 6e7e592dd81efecb63ee40760dbc0fa7 *b/badbitcount.bmp
 359818c4dafa534c9cc504d76123d2d3 *b/badbitssize.bmp
 f39386d74b3a22c80b1c0125bd6fc8fd *b/badfilesize.bmp
+1bb829795660e3df10699a411e120de8 *b/badheadersize.bmp
 622143f42eebdaf42dddceb59b4dddc8 *b/badpalettesize.bmp
 4eb998a50578a58cc476743c13d7e210 *b/badplanes.bmp
 f9e6f4befc14caf1461b43b1d186267b *b/badwidth.bmp

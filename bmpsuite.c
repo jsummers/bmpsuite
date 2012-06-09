@@ -95,6 +95,7 @@ struct context {
 	int bad_bitcount;
 	int bad_planes;
 	int bad_palettesize;
+	int bad_headersize;
 	int rletrns;
 	int palette_reserve; // Reserve palette color #0
 };
@@ -827,7 +828,7 @@ static void set_calculated_fields(struct context *c)
 		c->headersize = 12;
 	}
 	else {
-		c->headersize = 40;
+		c->headersize = c->bad_headersize ? 44 : 40;
 	}
 
 	if(c->bpp==8 && c->pal_entries!=256) {
@@ -887,6 +888,7 @@ static void defaultbmp(struct context *c)
 	c->bad_bitcount = 0;
 	c->bad_planes = 0;
 	c->bad_palettesize = 0;
+	c->bad_headersize = 0;
 	c->extrabytessize = 0;
 	c->palette_reserve = 0;
 	c->rletrns = 0;
@@ -1101,6 +1103,14 @@ static int run(struct context *c)
 	c->bpp = 1;
 	c->pal_entries = 2;
 	c->bad_planes = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "b/badheadersize.bmp";
+	c->bpp = 1;
+	c->pal_entries = 2;
+	c->bad_headersize = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
