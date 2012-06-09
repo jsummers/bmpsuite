@@ -7,6 +7,7 @@
 <style>
  .b { background:url(bkgd.png); }
  .q { background-color:#fff0e0; }
+ .bad { background-color:#ffa0a0; }
 </style>
 
 </head>
@@ -15,8 +16,9 @@
 
 <h1>BMP Suite Image List</h1>
 
-<p>This document shows the allegedly correct way to interpret the BMP
-images in <i>BMP Suite</i>, using PNG and JPEG images for reference.
+<p>This document describes the images in <i>BMP Suite</i>, and shows the
+allegedly correct way to interpret them, using PNG and JPEG images for
+reference.
 </p>
 
 <p>It also shows how your web browser displays the BMP images.
@@ -343,6 +345,65 @@ not very important for a web browser to support it.</p>
    so it&rsquo;s <i>possible</i> that this file is not correctly formed.
    The color channels are in an unusual order, to prevent viewers from
    passing this test by making a lucky guess.</td>
+ </tr>
+
+
+ <tr>
+  <td class=bad>b/badbitcount.bmp</td>
+  <td class=b>N/A</td>
+  <td class=b><img src="../b/badbitcount.bmp"></td>
+  <td>Header indicates an absurdly large number of bits/pixel.</td>
+ </tr>
+
+ <tr>
+  <td class=bad>b/badbitssize.bmp</td>
+  <td class=b>N/A</td>
+  <td class=b><img src="../b/badbitssize.bmp"></td>
+  <td>Header incorrectly indicates that the bitmap is several GB in size.</td>
+ </tr>
+
+ <tr>
+  <td class=bad>b/badfilesize.bmp</td>
+  <td class=b>N/A</td>
+  <td class=b><img src="../b/badfilesize.bmp"></td>
+  <td>Header incorrectly indicates that the file is several GB in size.</td>
+ </tr>
+
+ <tr>
+  <td class=bad>b/badpalettesize.bmp</td>
+  <td class=b>N/A</td>
+  <td class=b><img src="../b/badpalettesize.bmp"></td>
+  <td>Header incorrectly indicates the palette contains an absurdly large
+   number of colors.</td>
+ </tr>
+
+ <tr>
+  <td class=bad>b/badplanes.bmp</td>
+  <td class=b>N/A</td>
+  <td class=b><img src="../b/badplanes.bmp"></td>
+  <td>The &ldquo;planes&rdquo; setting, which is required to be 1, is not 1.</td>
+ </tr>
+
+ <tr>
+  <td class=bad>b/badwidth.bmp</td>
+  <td class=b>N/A</td>
+  <td class=b><img src="../b/badwidth.bmp"></td>
+  <td>The image claims to be a negative number of pixels in width.</td>
+ </tr>
+
+ <tr>
+  <td class=bad>b/pal2.bmp</td>
+  <td class=b>N/A</td>
+  <td class=b><img src="../b/pal2.bmp"></td>
+  <td>A palette image with 2 bits/pixel, which is not valid. Only 1, 4,
+   and 8 are allowed.</td>
+ </tr>
+
+ <tr>
+  <td class=bad>b/pal8badindex.bmp</td>
+  <td class=b>N/A</td>
+  <td class=b><img src="../b/pal8badindex.bmp"></td>
+  <td>Many of the palette indices are not present in the palette.</td>
  </tr>
 
 </table>
