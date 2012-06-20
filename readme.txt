@@ -1,9 +1,13 @@
 BMP Suite
+Version 2.0
 
-This utility generates a variety of types of Windows BMP image files, useful
-for testing purposes.
+This is a set of Windows BMP image files, and a utility for generating them.
+Many different varieties of BMP files are included, and are intended to be
+useful for testing.
 
 Copyright (C) 2012 Jason Summers
+<jason1@pobox.com>
+http://entropymine.com/jason/bmpsuite/
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -33,4 +37,11 @@ should probably still do its best to support them.
 Files in the "q" directory are "bad":
 They are clearly invalid. Make sure your program doesn't crash when reading
 them.
+
+The individual BMP files are described in the html/bmpsuite.html file.
+
+The generation utility is written in C, and is contained in the bmpsuite.c
+file, and the files in the 'data' subdirectory. In a Unix-like environment,
+type "make bmpsuite" to build the program, or just "make" to build and run it.
+Run "make check" to verify that it writes the BMP files correctly.
 

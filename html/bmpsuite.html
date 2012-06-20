@@ -16,15 +16,15 @@
 
 <h1>BMP Suite Image List</h1>
 
-<p>This document describes the images in <i>BMP Suite</i>, and shows the
-allegedly correct way to interpret them, using PNG and JPEG images for
-reference.
+<p>This document describes the images in <i>BMP Suite</i>, and shows what
+I allege to be the correct way to interpret them. PNG and JPEG images are
+used for reference.
 </p>
 
-<p>It also shows how your web browser displays the BMP images.
-But that&rsquo;s not its main purpose.
-BMP is poor image format to use on web pages, so it&rsquo;s probably
-not very important for a web browser to support it.</p>
+<p>It also shows how your web browser displays the BMP images,
+but that&rsquo;s not its main purpose.
+BMP is poor image format to use on web pages, so a web browser&rsquo;s
+level of support for it is arguably not important.</p>
 
 <table border=1 cellpadding=8>
 
@@ -68,9 +68,9 @@ not very important for a web browser to support it.</p>
   <td class=b><img src="pal1p1.png"></td>
   <td class=b><img src="../q/pal1p1.bmp"></td>
   <td>1 bit/pixel paletted image, with only one color in the palette.
-   The documentation says that 1bpp images have a palette size of 2
-   (not &ldquo;up to 2&rdquo;), but it would be silly for a viewer not to support a
-   size of 1.</td>
+   The documentation says that 1-bpp images have a palette size of 2
+   (not &ldquo;up to 2&rdquo;), but it would be silly for a viewer not to
+   support a size of 1.</td>
  </tr>
 
  <tr>
@@ -117,8 +117,7 @@ not very important for a web browser to support it.</p>
   <td class=b><img src="pal8.png"></td>
   <td class=b><img src="../g/pal8-0.bmp"></td>
   <td>Every field that can be set to 0 is set to 0: pixels/meter=0;
-   colors used=0 (meaning the default 256); size-of-image=0 (this field is
-   largely superfluous).</td>
+   colors used=0 (meaning the default 256); size-of-image=0.</td>
  </tr>
 
  <tr>
@@ -144,7 +143,7 @@ not very important for a web browser to support it.</p>
   <td>3</td>
   <td class=b><img src="pal8w126.png"></td>
   <td class=b><img src="../g/pal8w126.bmp"></td>
-  <td rowspan=3>Images with different widths.
+  <td rowspan=3>Images with different widths and heights.
    In BMP format, rows are padded to a multiple of four bytes, so we
    test all four possibilities.</td>
  </tr>
@@ -168,7 +167,7 @@ not very important for a web browser to support it.</p>
   <td>3</td>
   <td class=b><img src="pal8.png"></td>
   <td class=b><img src="../q/pal8topdown.bmp"></td>
-  <td>BMP images normally are stored from the botttom up, but
+  <td>BMP images are normally stored from the bottom up, but
    there is a way to store them from the top down. I have no
    reason to think it&rsquo;s invalid to store such an image in a BMP
    file, but it is unusual.</td>
@@ -205,8 +204,8 @@ not very important for a web browser to support it.</p>
   <td class=b><img src="../g/pal8nonsquare.bmp"></td>
   <td>An image with non-square pixels: the X pixels/meter is twice
    the Y pixels/meter. Image <i>editors</i> can be expected to
-   leave the image &ldquo;squashed&rdquo;; most image <i>viewers</i> really
-   ought to stretch it to the correct proportions.</td>
+   leave the image &ldquo;squashed&rdquo;; image <i>viewers</i> should
+   consider stretching it to its correct proportions.</td>
  </tr>
 
  <tr>
@@ -243,7 +242,7 @@ not very important for a web browser to support it.</p>
   <td class=b><img src="../g/rgb16.bmp"></td>
   <td>A 16-bit image with the default color format: 5 bits each for red,
    green, and blue, and 1 unused bit.
-   The whitest colors should be
+   The whitest colors should (I assume) be displayed as pure white:
    <span style="background-color:rgb(255,255,255)">(255,255,255)</span>, not
    <span style="background-color:rgb(248,248,248)">(248,248,248)</span>.</td>
  </tr>
@@ -253,7 +252,7 @@ not very important for a web browser to support it.</p>
   <td>3</td>
   <td class=b><img src="rgb16.png"></td>
   <td class=b><img src="../g/rgb16pal.bmp"></td>
-  <td>Same as g/rgb16.bmp, but with a 256-color palette.
+  <td>Same as g/rgb16.bmp, but with a (rather pointless) 256-color palette.
    See also g/rgb24pal.bmp, which is similar, but with a larger palette.</td>
  </tr>
 
@@ -265,8 +264,8 @@ not very important for a web browser to support it.</p>
   <td>A 16-bit image with a BITFIELDS segment indicating 5 red, 6 green,
    and 5 blue bits. This is a standard 16-bit format, even supported by
    old versions of Windows that don&rsquo;t support any other non-default 16-bit
-   format.
-   The whitest colors should be
+   formats.
+   The whitest colors should be displayed as pure white:
    <span style="background-color:rgb(255,255,255)">(255,255,255)</span>, not
    <span style="background-color:rgb(248,252,248)">(248,252,248)</span>.</td>
  </tr>
@@ -279,7 +278,8 @@ not very important for a web browser to support it.</p>
   <td>An unusual and silly 16-bit image, with 2 red bits, 3 green bits, and 1
   blue bit. Most viewers do support this image, but the colors may be darkened
   with a yellow-green shadow. That&rsquo;s because they&rsquo;re doing simple
-  bit-shifting, instead of proper scaling.</td>
+  bit-shifting (possibly including one round of bit replication), instead of
+  proper scaling.</td>
  </tr>
 
  <tr>
@@ -299,8 +299,7 @@ not very important for a web browser to support it.</p>
   <td>3</td>
   <td class=b><img src="rgb24.png"></td>
   <td class=b><img src="../g/rgb24.bmp"></td>
-  <td>A perfectly ordinary 24-bit (truecolor) image. If a viewer can&rsquo;t handle this, it
-   can&rsquo;t handle anything.</td>
+  <td>A perfectly ordinary 24-bit (truecolor) image.</td>
  </tr>
 
  <tr>
@@ -353,12 +352,15 @@ not very important for a web browser to support it.</p>
  <tr>
   <td class=q>q/rgb32fakealpha.bmp</td>
   <td>3</td>
-  <td class=b><img src="rgb24.png"></td>
+  <td class=b><img src="rgb24.png"><br>
+    or<br>
+    <img class=b src="fakealpha.png">
+</td>
   <td class=b><img src="../q/rgb32fakealpha.bmp"></td>
-  <td>Same as g/rgb32.bmp, except that the unused bytes are set to something
+  <td>Same as g/rgb32.bmp, except that the unused bits are set to something
    other than 0.
-   This: <img class=b src="fakealpha.png"> is acceptable, but it means
-   the viewer is most likely using heuristics to guess whether the undefined
+   If the image becomes transparent toward the bottom, it probably means
+   the viewer uses heuristics to guess whether the undefined
    data represents transparency.</td>
  </tr>
 
@@ -367,7 +369,7 @@ not very important for a web browser to support it.</p>
   <td>3</td>
   <td class=b><img src="rgb24.png"></td>
   <td class=b><img src="../q/rgb32-111110.bmp"></td>
-  <td>A 32 bits/pixel image, with all 32 bits used: 11 each for the red and
+  <td>A 32 bits/pixel image, with all 32 bits used: 11 each for red and
    green, and 10 for blue. As far as I know, this is perfectly valid, but it
    is unusual.</td>
  </tr>
@@ -456,7 +458,8 @@ not very important for a web browser to support it.</p>
   <td>3</td>
   <td class=b>N/A</td>
   <td class=b><img src="../b/pal8badindex.bmp"></td>
-  <td>Many of the palette indices are not present in the palette.</td>
+  <td>Many of the palette indices used in the image are not present in the
+   palette.</td>
  </tr>
 
 </table>
