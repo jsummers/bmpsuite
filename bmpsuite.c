@@ -1156,6 +1156,18 @@ static int run(struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
+	c->filename = "g/rgb16-565pal.bmp";
+	c->bpp = 16;
+	c->pal_entries = 256;
+	c->compression = 3;
+	c->bf_r = 0x0000f800; c->nbits_r = 5; c->bf_shift_r = 11;
+	c->bf_g = 0x000007e0; c->nbits_g = 6; c->bf_shift_g = 5;
+	c->bf_b = 0x0000001f; c->nbits_b = 5; c->bf_shift_b = 0;
+	c->bitfieldssize = 12;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
 	c->filename = "q/rgba16-4444.bmp";
 	c->bmpversion = 5;
 	c->bpp = 16;
