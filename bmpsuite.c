@@ -94,6 +94,7 @@ struct context {
 	int bad_biSizeImage;
 	int bad_bfSize;
 	int bad_width;
+	int bad_reallybig;
 	int bad_bitcount;
 	int bad_planes;
 	int bad_palettesize;
@@ -719,6 +720,10 @@ static void write_bitmapinfoheader(struct context *c)
 	set_int32(c,14+0,c->headersize);
 	set_int32(c,14+4,(c->bad_width) ? -c->w : c->w); // biWidth
 	set_int32(c,14+8,(c->topdown) ? -c->h : c->h);
+	if(c->bad_reallybig) {
+		set_int32(c,14+4,3000000);
+		set_int32(c,14+8,2000000);
+	}
 	set_int16(c,14+12,(c->bad_planes) ? 30000 : 1); // biPlanes
 	set_int16(c,14+14,(c->bad_bitcount) ? 30000 : c->bpp); // biBitCount
 	set_int32(c,14+16,c->compression);
@@ -901,6 +906,7 @@ static void defaultbmp(struct context *c)
 	c->bad_biSizeImage = 0;
 	c->bad_bfSize = 0;
 	c->bad_width = 0;
+	c->bad_reallybig = 0;
 	c->bad_bitcount = 0;
 	c->bad_planes = 0;
 	c->bad_palettesize = 0;
@@ -1119,6 +1125,16 @@ static int run(struct context *c)
 	c->bpp = 1;
 	c->pal_entries = 2;
 	c->bad_width = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "b/reallybig.bmp";
+	c->bpp = 24;
+	c->pal_entries = 0;
+	c->bad_reallybig = 1;
+	c->bad_biSizeImage = 1;
+	c->bad_bfSize = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
