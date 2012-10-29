@@ -100,6 +100,7 @@ struct context {
 	int bad_palettesize;
 	int bad_headersize;
 	int bad_rle;
+	int bad_eof;
 	int rletrns;
 	int palette_reserve; // Reserve palette color #0
 };
@@ -821,7 +822,12 @@ static int write_image_file(struct context *c)
 		fprintf(stderr,"Can't write %s\n",c->filename);
 		return 0;
 	}
-	fwrite(c->mem,1,c->mem_used,f);
+	if(c->bad_eof) {
+		fwrite(c->mem,1,273,f);
+	}
+	else {
+		fwrite(c->mem,1,c->mem_used,f);
+	}
 	fclose(f);
 	return 1;
 }
@@ -913,6 +919,7 @@ static void defaultbmp(struct context *c)
 	c->bad_palettesize = 0;
 	c->bad_headersize = 0;
 	c->bad_rle = 0;
+	c->bad_eof = 0;
 	c->extrabytessize = 0;
 	c->palette_reserve = 0;
 	c->rletrns = 0;
@@ -1129,6 +1136,14 @@ static int run(struct context *c)
 	c->bpp = 1;
 	c->pal_entries = 2;
 	c->bad_bfSize = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "b/shortfile.bmp";
+	c->bpp = 1;
+	c->pal_entries = 2;
+	c->bad_eof = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
