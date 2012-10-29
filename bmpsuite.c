@@ -19,6 +19,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+// #define SMALL_IMAGES
+
 #define BMP_MAX_SIZE 100000
 
 #define bmpovl_width 78
@@ -143,10 +145,19 @@ static double srgb_to_linear(double v_srgb)
 	}
 }
 
-static void get_pixel_color(struct context *c, int x, int y,
+static void get_pixel_color(struct context *c, int x1, int y1,
 	double *pr, double *pg, double *pb, double *pa)
 {
 	unsigned char t;
+	int x, y;
+
+#ifdef SMALL_IMAGES
+	x = x1+21;
+	y = y1+16;
+#else
+	x = x1;
+	y = y1;
+#endif
 
 	if(x>=bmpovl_xpos && x<(bmpovl_xpos+bmpovl_width) &&
 	   y>=bmpovl_ypos && y<(bmpovl_ypos+bmpovl_height))
@@ -860,8 +871,13 @@ static void defaultbmp(struct context *c)
 {
 	memset(c->mem,0,BMP_MAX_SIZE);
 	c->mem_used = 0;
+#ifdef SMALL_IMAGES
+	c->w = 31;
+	c->h = 32;
+#else
 	c->w = 127;
 	c->h = 64;
+#endif
 	c->bpp = 8;
 	c->pal_entries = 252;
 	c->clr_used = 0;
@@ -931,19 +947,31 @@ static int run(struct context *c)
 
 	defaultbmp(c);
 	c->filename = "g/pal8w124.bmp";
+#ifdef SMALL_IMAGES
+	c->w = 28; c->h = 29;
+#else
 	c->w = 124; c->h = 61;
+#endif
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
 	c->filename = "g/pal8w125.bmp";
+#ifdef SMALL_IMAGES
+	c->w = 29; c->h = 30;
+#else
 	c->w = 125; c->h = 62;
+#endif
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
 	c->filename = "g/pal8w126.bmp";
+#ifdef SMALL_IMAGES
+	c->w = 30; c->h = 31;
+#else
 	c->w = 126; c->h = 63;
+#endif
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
@@ -991,7 +1019,11 @@ static int run(struct context *c)
 	c->filename = "g/pal8nonsquare.bmp";
 	c->halfheight = 1;
 	c->ypelspermeter = 1417;
+#ifdef SMALL_IMAGES
+	c->h = 16;
+#else
 	c->h = 32;
+#endif
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
