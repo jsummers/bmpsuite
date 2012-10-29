@@ -1249,7 +1249,7 @@ static int run(struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
-	c->filename = "g/rgb24pal.bmp";
+	c->filename = "q/rgb24largepal.bmp";
 	c->bpp = 24;
 	c->pal_entries = 300;
 	set_calculated_fields(c);

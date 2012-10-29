@@ -18,7 +18,6 @@ f62ee13095cdd55c18c718e063e046ad *g/rgb16-565.bmp
 97cf55e858384c4f230ffc118be45e99 *g/rgb16-565pal.bmp
 fe410202d3067a3290d29c07dc6c5f40 *g/rgb16pal.bmp
 8137a48d037df17bf6d7ff4489beeb87 *g/rgb24.bmp
-82306b27fd938a88edc649ff7790e9df *g/rgb24pal.bmp
 62ac37dfdae65ecdec3d89518d46a6cb *g/rgb32.bmp
 79e1b05f6473e780448fbeed814fb249 *g/rgb32bf.bmp
 29cce427b79fe3abf5b43f8f7a1156df *q/pal1p1.bmp
@@ -29,6 +28,7 @@ f9ac82a0bb4be51815f0a58391768ef0 *q/pal8oversizepal.bmp
 3048e55ebb0bebcd4e4966d26191ee81 *q/pal8topdown.bmp
 93b882a5dd5819385fb076f0a0ddfcf1 *q/rgb16-231.bmp
 6249949e37d0068364b7124e88cd8695 *q/rgb24jpeg.bmp
+82306b27fd938a88edc649ff7790e9df *q/rgb24largepal.bmp
 5c4c20249ccda2111d1281517abac82c *q/rgb24png.bmp
 135dc8d131ce4b2408819c31b8748298 *q/rgb32-111110.bmp
 0b93da4e1641c80842e7f075f20ad563 *q/rgb32fakealpha.bmp
