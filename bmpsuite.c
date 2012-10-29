@@ -99,6 +99,7 @@ struct context {
 	int bad_planes;
 	int bad_palettesize;
 	int bad_headersize;
+	int bad_rle;
 	int rletrns;
 	int palette_reserve; // Reserve palette color #0
 };
@@ -475,8 +476,8 @@ static int write_bits_rle(struct context *c)
 			if(c->rletrns && row[rowpos]==0) { // transparent pixel
 				c->mem[curpos++] = 0;
 				c->mem[curpos++] = 2;
-				c->mem[curpos++] = run_lens[rowpos]; // x delta
-				c->mem[curpos++] = 0; // y delta
+				c->mem[curpos++] = run_lens[rowpos] + (unsigned char)(c->bad_rle?5:0); // x delta
+				c->mem[curpos++] = (unsigned char)(c->bad_rle?2:0); // y delta
 				rowpos += run_lens[rowpos];
 				continue;
 			}
@@ -526,7 +527,7 @@ static int write_bits_rle(struct context *c)
 			if(c->rletrns && row[rowpos]==0) break;
 
 			// Write a compressed segment
-			c->mem[curpos++] = run_lens[rowpos];
+			c->mem[curpos++] = run_lens[rowpos] + (unsigned char)(c->bad_rle?1:0);
 
 			if(c->compression==CMPR_RLE4) {
 				c->mem[curpos] = row[rowpos]<<4;
@@ -911,6 +912,7 @@ static void defaultbmp(struct context *c)
 	c->bad_planes = 0;
 	c->bad_palettesize = 0;
 	c->bad_headersize = 0;
+	c->bad_rle = 0;
 	c->extrabytessize = 0;
 	c->palette_reserve = 0;
 	c->rletrns = 0;
@@ -1036,6 +1038,16 @@ static int run(struct context *c)
 	defaultbmp(c);
 	c->filename = "g/pal8rle.bmp";
 	c->compression = CMPR_RLE8;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "b/badrle.bmp";
+	c->compression = CMPR_RLE8;
+	c->rletrns = 1;
+	c->pal_entries = 253;
+	c->palette_reserve = 1;
+	c->bad_rle = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
