@@ -340,6 +340,9 @@ static void set_pixel(struct context *c, int x, int y,
 		tmp2 = ordered_dither(g,6,x,y);
 		tmp3 = ordered_dither(b,5,x,y);
 		p = tmp1 + tmp2*6 + tmp3*42;
+		if(c->palette_reserve) {
+			if(p<255) p++;
+		}
 		c->mem[c->bitsoffset+offs] = p;
 	}
 	else if(c->bpp==4) {
@@ -1014,7 +1017,8 @@ static int run(struct context *c)
 
 	defaultbmp(c);
 	c->filename = "b/pal8badindex.bmp";
-	c->pal_entries = 100;
+	c->pal_entries = 101;
+	c->palette_reserve = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
