@@ -433,6 +433,7 @@ static int write_bits_rle(struct context *c)
 	unsigned char *row;
 	int *run_lens;
 	size_t i,j;
+	size_t j_logical;
 	int k;
 	int tmp1, tmp2, tmp3;
 	double r,g,b,a;
@@ -449,20 +450,22 @@ static int write_bits_rle(struct context *c)
 	thresh = c->compression==CMPR_RLE4 ? 5 : 4;
 
 	for(j=0;j<c->h;j++) {
+		j_logical = c->topdown ? j : c->h-1-j;
+
 		// Temporarily store the palette indices in row[]
 		for(i=0;i<c->w;i++) {
-			get_pixel_color(c,i,c->h-1-j, &r,&g,&b,&a);
+			get_pixel_color(c,i,j_logical, &r,&g,&b,&a);
 
 			if(c->compression==CMPR_RLE4) {
-				tmp1 = ordered_dither(r,1,i,c->h-1-j);
-				tmp2 = ordered_dither(g,2,i,c->h-1-j);
-				tmp3 = ordered_dither(b,1,i,c->h-1-j);
+				tmp1 = ordered_dither(r,1,i,j_logical);
+				tmp2 = ordered_dither(g,2,i,j_logical);
+				tmp3 = ordered_dither(b,1,i,j_logical);
 				row[i] = c->palette_reserve + tmp1 + tmp2*2 + tmp3*6;
 			}
 			else {
-				tmp1 = ordered_dither(r,5,i,c->h-1-j);
-				tmp2 = ordered_dither(g,6,i,c->h-1-j);
-				tmp3 = ordered_dither(b,5,i,c->h-1-j);
+				tmp1 = ordered_dither(r,5,i,j_logical);
+				tmp2 = ordered_dither(g,6,i,j_logical);
+				tmp3 = ordered_dither(b,5,i,j_logical);
 				row[i] = c->palette_reserve + tmp1 + tmp2*6 + tmp3*42;
 			}
 			if(c->rletrns && a<0.5) {
@@ -1059,6 +1062,13 @@ static int run(struct context *c)
 	c->pal_entries = 253;
 	c->palette_reserve = 1;
 	c->bad_rle = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "b/rletopdown.bmp";
+	c->topdown = 1;
+	c->compression = CMPR_RLE8;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
