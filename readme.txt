@@ -31,12 +31,12 @@ Files in the "g" directory I consider to be "good":
 Your program should definitely support them if it claims to support BMP.
 
 Files in the "q" directory I consider to be "questionable":
-They may technically violate the documentation in some way, but your program
-should probably still do its best to support them.
+These may be really unusual, or technically violate the documentation in some
+way, but your program should probably still support most of them.
 
-Files in the "q" directory are "bad":
-They are clearly invalid. Make sure your program doesn't crash when reading
-them.
+Files in the "b" directory I consider to be "bad":
+These are clearly invalid or unreasonable. Make sure your program doesn't crash
+when reading them.
 
 The individual BMP files are described in the html/bmpsuite.html file.
 
