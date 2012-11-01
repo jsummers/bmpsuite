@@ -1194,6 +1194,24 @@ static int run(struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
+	c->filename = "b/baddens1.bmp";
+	c->bpp = 1;
+	c->pal_entries = 2;
+	c->xpelspermeter = 30000000;
+	c->ypelspermeter = 3;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "b/baddens2.bmp";
+	c->bpp = 1;
+	c->pal_entries = 2;
+	c->xpelspermeter = 3;
+	c->ypelspermeter = 30000000;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
 	c->filename = "b/pal2.bmp";
 	c->bpp = 2;
 	c->pal_entries = 4;
