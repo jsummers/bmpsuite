@@ -78,6 +78,7 @@ struct context {
 #define CMPR_RLE4 2
 #define CMPR_JPEG 4
 #define CMPR_PNG  5
+#define BI_ALPHABITFIELDS 6 // or 4?
 	int compression;
 
 	int pal_wb; // 2-color, palette[0] = white
@@ -599,11 +600,14 @@ static int write_bits(struct context *c)
 static void write_bitfields(struct context *c)
 {
 	size_t offs;
-	if(c->bitfieldssize!=12) return;
+	if(c->bitfieldssize!=12 && c->bitfieldssize!=16) return;
 	offs = 14+c->headersize;
 	set_uint32(c,offs  ,c->bf_r);
 	set_uint32(c,offs+4,c->bf_g);
 	set_uint32(c,offs+8,c->bf_b);
+	if(c->bitfieldssize==16) {
+		set_uint32(c,offs+12,c->bf_a);
+	}
 }
 
 static void write_palette(struct context *c)
@@ -800,7 +804,7 @@ static int make_bmp(struct context *c)
 	write_palette(c);
 	if(c->compression==CMPR_RLE4 || c->compression==CMPR_RLE8)
 		ret = write_bits_rle(c);
-	else if(c->compression==CMPR_JPEG)
+	else if(c->compression==CMPR_JPEG && c->bmpversion>3)
 		ret = write_bits_fromfile(c,"data/image.jpg");
 	else if(c->compression==CMPR_PNG)
 		ret = write_bits_fromfile(c,"data/image.png");
@@ -1367,6 +1371,22 @@ static int run(struct context *c)
 	c->pal_entries = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
+
+#if 0
+	defaultbmp(c);
+	c->filename = "q/rgba32abf.bmp";
+	c->bmpversion = 3;
+	c->bpp = 32;
+	c->compression = BI_ALPHABITFIELDS;
+	c->bf_r = 0xff000000; c->nbits_r = 8; c->bf_shift_r = 24;
+	c->bf_g = 0x0000ff00; c->nbits_g = 8; c->bf_shift_g = 8;
+	c->bf_b = 0x000000ff; c->nbits_b = 8; c->bf_shift_b = 0;
+	c->bf_a = 0x00ff0000; c->nbits_a = 8; c->bf_shift_a = 16;
+	c->bitfieldssize = 16;
+	c->pal_entries = 0;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+#endif
 
 	defaultbmp(c);
 	c->filename = "q/rgb24jpeg.bmp";
