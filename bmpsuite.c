@@ -78,7 +78,8 @@ struct context {
 #define CMPR_RLE4 2
 #define CMPR_JPEG 4
 #define CMPR_PNG  5
-#define BI_ALPHABITFIELDS 6 // or 4?
+#define BI_BITFIELDS      3
+#define BI_ALPHABITFIELDS 6
 	int compression;
 
 	int pal_wb; // 2-color, palette[0] = white
@@ -1247,7 +1248,7 @@ static int run(struct context *c)
 	c->filename = "g/rgb16-565.bmp";
 	c->bpp = 16;
 	c->pal_entries = 0;
-	c->compression = 3;
+	c->compression = BI_BITFIELDS;
 	c->bf_r = 0x0000f800; c->nbits_r = 5; c->bf_shift_r = 11;
 	c->bf_g = 0x000007e0; c->nbits_g = 6; c->bf_shift_g = 5;
 	c->bf_b = 0x0000001f; c->nbits_b = 5; c->bf_shift_b = 0;
@@ -1259,7 +1260,7 @@ static int run(struct context *c)
 	c->filename = "g/rgb16-565pal.bmp";
 	c->bpp = 16;
 	c->pal_entries = 256;
-	c->compression = 3;
+	c->compression = BI_BITFIELDS;
 	c->bf_r = 0x0000f800; c->nbits_r = 5; c->bf_shift_r = 11;
 	c->bf_g = 0x000007e0; c->nbits_g = 6; c->bf_shift_g = 5;
 	c->bf_b = 0x0000001f; c->nbits_b = 5; c->bf_shift_b = 0;
@@ -1272,7 +1273,7 @@ static int run(struct context *c)
 	c->bmpversion = 5;
 	c->bpp = 16;
 	c->pal_entries = 0;
-	c->compression = 3;
+	c->compression = BI_BITFIELDS;
 	c->bf_r = 0x00000f00; c->nbits_r = 4; c->bf_shift_r = 8;
 	c->bf_g = 0x000000f0; c->nbits_g = 4; c->bf_shift_g = 4;
 	c->bf_b = 0x0000000f; c->nbits_b = 4; c->bf_shift_b = 0;
@@ -1284,7 +1285,7 @@ static int run(struct context *c)
 	c->filename = "q/rgb16-231.bmp";
 	c->bpp = 16;
 	c->pal_entries = 0;
-	c->compression = 3;
+	c->compression = BI_BITFIELDS;
 	c->bf_r = 0x00000030; c->nbits_r = 2; c->bf_shift_r = 4;
 	c->bf_g = 0x0000000e; c->nbits_g = 3; c->bf_shift_g = 1;
 	c->bf_b = 0x00000001; c->nbits_b = 1; c->bf_shift_b = 0;
@@ -1327,7 +1328,7 @@ static int run(struct context *c)
 	defaultbmp(c);
 	c->filename = "g/rgb32bf.bmp";
 	c->bpp = 32;
-	c->compression = 3;
+	c->compression = BI_BITFIELDS;
 	c->pal_entries = 0;
 	c->bf_r = 0xff000000; c->nbits_r = 8; c->bf_shift_r = 24;
 	c->bf_g = 0x00000ff0; c->nbits_g = 8; c->bf_shift_g = 4;
@@ -1350,7 +1351,7 @@ static int run(struct context *c)
 	defaultbmp(c);
 	c->filename = "q/rgb32-111110.bmp";
 	c->bpp = 32;
-	c->compression = 3;
+	c->compression = BI_BITFIELDS;
 	c->pal_entries = 0;
 	c->bf_r = 0xffe00000; c->nbits_r = 11; c->bf_shift_r = 21;
 	c->bf_g = 0x001ffc00; c->nbits_g = 11; c->bf_shift_g = 10;
@@ -1363,7 +1364,7 @@ static int run(struct context *c)
 	c->filename = "q/rgba32.bmp";
 	c->bmpversion = 5;
 	c->bpp = 32;
-	c->compression = 3; // BI_BITFIELDS
+	c->compression = BI_BITFIELDS;
 	c->bf_r = 0xff000000; c->nbits_r = 8; c->bf_shift_r = 24;
 	c->bf_g = 0x0000ff00; c->nbits_g = 8; c->bf_shift_g = 8;
 	c->bf_b = 0x000000ff; c->nbits_b = 8; c->bf_shift_b = 0;
@@ -1372,7 +1373,6 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-#if 0
 	defaultbmp(c);
 	c->filename = "q/rgba32abf.bmp";
 	c->bmpversion = 3;
@@ -1386,7 +1386,6 @@ static int run(struct context *c)
 	c->pal_entries = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
-#endif
 
 	defaultbmp(c);
 	c->filename = "q/rgb24jpeg.bmp";
