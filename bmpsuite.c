@@ -1037,7 +1037,7 @@ static int run(struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
-	c->filename = "q/pal8topdown.bmp";
+	c->filename = "g/pal8topdown.bmp";
 	c->topdown = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;

@@ -7,6 +7,7 @@ b0fae64ba725390ae0f5a51684683b78 *g/pal4.bmp
 9a40c7578bb8cb87c04b985f5cc60360 *g/pal8-0.bmp
 cc260461c55ee8a54f3e4d0b8bf965c2 *g/pal8nonsquare.bmp
 684d9beb65de7b1ec7deb43deef67401 *g/pal8rle.bmp
+3048e55ebb0bebcd4e4966d26191ee81 *g/pal8topdown.bmp
 55b9e2c9772c6be1e1fa0a827181ec81 *g/pal8v2.bmp
 a80851a83807cf1a009246c803e91af3 *g/pal8v4.bmp
 8ed33d6619345d6a7f5b45198d2a3833 *g/pal8v5.bmp
@@ -25,7 +26,6 @@ e65bdb7e21a5c3225da8b8b39ff60067 *q/pal4rletrns.bmp
 e784e40910612ffd659384ae72306518 *q/pal8offs.bmp
 f9ac82a0bb4be51815f0a58391768ef0 *q/pal8oversizepal.bmp
 1710166027c130c93d087b3df58ee489 *q/pal8rletrns.bmp
-3048e55ebb0bebcd4e4966d26191ee81 *q/pal8topdown.bmp
 93b882a5dd5819385fb076f0a0ddfcf1 *q/rgb16-231.bmp
 6249949e37d0068364b7124e88cd8695 *q/rgb24jpeg.bmp
 82306b27fd938a88edc649ff7790e9df *q/rgb24largepal.bmp
