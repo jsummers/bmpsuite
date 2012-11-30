@@ -64,7 +64,6 @@ struct context {
 	int bpp;
 	int pal_entries;
 	int clr_used;
-	int bmpversion;
 	int headersize;
 	int bitfieldssize;
 	int palettesize;
@@ -103,7 +102,6 @@ struct context {
 	int bad_bitcount;
 	int bad_planes;
 	int bad_palettesize;
-	int bad_headersize;
 	int bad_rle;
 	int bad_eof;
 	int rletrns;
@@ -644,7 +642,7 @@ static void write_palette(struct context *c)
 	int bppe; // bytes per palette entry
 
 	offs = 14+c->headersize+c->bitfieldssize;
-	bppe = (c->bmpversion<3) ? 3 : 4;
+	bppe = (c->headersize<40) ? 3 : 4;
 
 	if(c->bpp==8) {
 		if(c->palette_reserve) {
@@ -777,7 +775,7 @@ static void write_bitmapinfoheader(struct context *c)
 	set_int32(c,14+32,(c->bad_palettesize) ? 0x12341234 : c->clr_used); // biClrUsed
 	set_int32(c,14+36,0); // biClrImportant
 
-	if(c->bmpversion>=4) {
+	if(c->headersize>=108) {
 		if(c->compression==3) {
 			set_uint32(c,14+40,c->bf_r);
 			set_uint32(c,14+44,c->bf_g);
@@ -785,7 +783,7 @@ static void write_bitmapinfoheader(struct context *c)
 			set_uint32(c,14+52,c->bf_a);
 		}
 
-		if(c->bmpversion==4) {
+		if(c->headersize==108) {
 			// Modern documentation lists LCS_CALIBRATED_RGB as the only legal
 			// CSType for v4 bitmaps.
 			set_uint32(c,14+56,0); // CSType = LCS_CALIBRATED_RGB
@@ -822,7 +820,7 @@ static void write_bitmapinfoheader(struct context *c)
 			}
 		}
 	}
-	if(c->bmpversion>=5) {
+	if(c->headersize>=124) {
 		set_uint32(c,14+108,4); // Rendering intent = Perceptual
 		if(c->embed_profile) {
 			set_uint32(c,14+112,c->profile_offset-14);
@@ -839,7 +837,7 @@ static int make_bmp(struct context *c)
 	write_palette(c);
 	if(c->compression==CMPR_RLE4 || c->compression==CMPR_RLE8)
 		ret = write_bits_rle(c);
-	else if(c->compression==CMPR_JPEG && c->bmpversion>3)
+	else if(c->compression==CMPR_JPEG && c->headersize>40)
 		ret = write_bits_fromfile(c,"data/image.jpg");
 	else if(c->compression==CMPR_PNG)
 		ret = write_bits_fromfile(c,"data/image.png");
@@ -852,7 +850,7 @@ static int make_bmp(struct context *c)
 	if(c->embed_profile) {
 		write_profile(c,"data/srgb.icc");
 	}
-	if(c->bmpversion<3)
+	if(c->headersize<40)
 		write_bitmapcoreheader(c);
 	else
 		write_bitmapinfoheader(c);
@@ -889,18 +887,6 @@ static int make_bmp_file(struct context *c)
 
 static void set_calculated_fields(struct context *c)
 {
-	if(c->bmpversion==5) {
-		c->headersize = 124;
-	}
-	else if(c->bmpversion==4) {
-		c->headersize = 108;
-	}
-	else if(c->bmpversion==2) {
-		c->headersize = 12;
-	}
-	else {
-		c->headersize = c->bad_headersize ? 44 : 40;
-	}
 
 	if(c->bpp==8 && c->pal_entries!=256) {
 		c->clr_used = c->pal_entries;
@@ -915,7 +901,7 @@ static void set_calculated_fields(struct context *c)
 		c->clr_used = c->pal_entries;
 	}
 
-	if(c->bmpversion<3) {
+	if(c->headersize<40) {
 		c->pal_entries = 1<<c->bpp;
 		c->clr_used = c->pal_entries;
 		c->palettesize = c->pal_entries*3;
@@ -941,7 +927,6 @@ static void defaultbmp(struct context *c)
 	c->bpp = 8;
 	c->pal_entries = 252;
 	c->clr_used = 0;
-	c->bmpversion = 3;
 	c->headersize = 40;
 	c->bitssize = 0;
 	c->bitfieldssize = 0;
@@ -968,7 +953,6 @@ static void defaultbmp(struct context *c)
 	c->bad_bitcount = 0;
 	c->bad_planes = 0;
 	c->bad_palettesize = 0;
-	c->bad_headersize = 0;
 	c->bad_rle = 0;
 	c->bad_eof = 0;
 	c->extrabytessize = 0;
@@ -994,20 +978,20 @@ static int run(struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
-	c->filename = "g/pal8v2.bmp";
-	c->bmpversion = 2;
+	c->filename = "g/pal8os2.bmp";
+	c->headersize = 12;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
 	c->filename = "g/pal8v4.bmp";
-	c->bmpversion = 4;
+	c->headersize = 108;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
 	c->filename = "g/pal8v5.bmp";
-	c->bmpversion = 5;
+	c->headersize = 124;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
@@ -1244,7 +1228,7 @@ static int run(struct context *c)
 	c->filename = "b/badheadersize.bmp";
 	c->bpp = 1;
 	c->pal_entries = 2;
-	c->bad_headersize = 1;
+	c->headersize = 44;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
@@ -1310,7 +1294,7 @@ static int run(struct context *c)
 
 	defaultbmp(c);
 	c->filename = "q/rgba16-4444.bmp";
-	c->bmpversion = 5;
+	c->headersize = 124;
 	c->bpp = 16;
 	c->pal_entries = 0;
 	c->compression = BI_BITFIELDS;
@@ -1343,7 +1327,7 @@ static int run(struct context *c)
 
 	defaultbmp(c);
 	c->filename = "q/rgb24prof.bmp";
-	c->bmpversion = 5;
+	c->headersize = 124;
 	c->bpp = 24;
 	c->pal_entries = 0;
 	c->embed_profile = 1;
@@ -1411,7 +1395,7 @@ static int run(struct context *c)
 
 	defaultbmp(c);
 	c->filename = "q/rgba32.bmp";
-	c->bmpversion = 5;
+	c->headersize = 124;
 	c->bpp = 32;
 	c->compression = BI_BITFIELDS;
 	c->bf_r = 0xff000000; c->nbits_r = 8; c->bf_shift_r = 24;
@@ -1424,7 +1408,6 @@ static int run(struct context *c)
 
 	defaultbmp(c);
 	c->filename = "q/rgba32abf.bmp";
-	c->bmpversion = 3;
 	c->bpp = 32;
 	c->compression = BI_ALPHABITFIELDS;
 	c->bf_r = 0xff000000; c->nbits_r = 8; c->bf_shift_r = 24;
@@ -1438,7 +1421,7 @@ static int run(struct context *c)
 
 	defaultbmp(c);
 	c->filename = "q/rgb24jpeg.bmp";
-	c->bmpversion = 5;
+	c->headersize = 124;
 	c->bpp = 0;
 	c->compression = CMPR_JPEG;
 	c->pal_entries = 0;
@@ -1447,7 +1430,7 @@ static int run(struct context *c)
 
 	defaultbmp(c);
 	c->filename = "q/rgb24png.bmp";
-	c->bmpversion = 5;
+	c->headersize = 124;
 	c->bpp = 0;
 	c->compression = CMPR_PNG;
 	c->pal_entries = 0;
