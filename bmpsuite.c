@@ -71,6 +71,8 @@ struct context {
 	int extrabytessize;
 	int bitsoffset; // Offset from beginning of file
 	int bitssize;
+	int profile_offset; // Offset from beginning of file
+	int profile_size;
 	int w, h;
 	int rowsize;
 	int xpelspermeter, ypelspermeter;
@@ -90,6 +92,7 @@ struct context {
 	unsigned int bf_shift_r, bf_shift_g, bf_shift_b, bf_shift_a;
 	int dither;
 	int topdown;
+	int embed_profile;
 	int alphahack32;
 	int halfheight;
 	int zero_biSizeImage;
@@ -598,6 +601,28 @@ static int write_bits(struct context *c)
 	return 1;
 }
 
+static int write_profile(struct context *c, const char *fn)
+{
+	int retval = 0;
+	FILE *f = NULL;
+
+	f=fopen(fn,"rb");
+	if(!f) goto done;
+
+	// The "+20" leaves a gap of 20 unused bytes between the bits and the
+	// profile, just to be difficult.
+	c->profile_offset = c->bitsoffset + c->bitssize + 20;
+
+	c->profile_size = fread(&c->mem[c->profile_offset], 1, 100000-c->profile_offset, f);
+	if(c->profile_size<1) goto done;
+	c->mem_used = c->profile_offset + c->profile_size;
+
+	retval = 1;
+done:
+	if(f) fclose(f);
+	return retval;
+}
+
 static void write_bitfields(struct context *c)
 {
 	size_t offs;
@@ -789,11 +814,20 @@ static void write_bitmapinfoheader(struct context *c)
 			set_uint32(c,14+104, (unsigned int)(0.5+gamma*65536.0)); // bV4GammaBlue
 		}
 		else {
-			set_uint32(c,14+56,0x73524742); // CSType = sRGB
+			if(c->embed_profile) {
+				set_uint32(c,14+56,0x4d424544); // CSType = PROFILE_EMBEDDED
+			}
+			else {
+				set_uint32(c,14+56,0x73524742); // CSType = sRGB
+			}
 		}
 	}
 	if(c->bmpversion>=5) {
 		set_uint32(c,14+108,4); // Rendering intent = Perceptual
+		if(c->embed_profile) {
+			set_uint32(c,14+112,c->profile_offset-14);
+			set_uint32(c,14+116,c->profile_size);
+		}
 	}
 }
 
@@ -814,6 +848,9 @@ static int make_bmp(struct context *c)
 	if(!ret) {
 		fprintf(stderr,"Failed to generate image for %s\n",c->filename);
 		return 0;
+	}
+	if(c->embed_profile) {
+		write_profile(c,"data/srgb.icc");
 	}
 	if(c->bmpversion<3)
 		write_bitmapcoreheader(c);
@@ -918,6 +955,9 @@ static void defaultbmp(struct context *c)
 	c->pal_p1 = 0;
 	c->dither = 0;
 	c->topdown = 0;
+	c->embed_profile = 0;
+	c->profile_offset = 0;
+	c->profile_size = 0;
 	c->alphahack32 = 0;
 	c->halfheight = 0;
 	c->zero_biSizeImage = 0;
@@ -1298,6 +1338,15 @@ static int run(struct context *c)
 	c->filename = "g/rgb24.bmp";
 	c->bpp = 24;
 	c->pal_entries = 0;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "q/rgb24prof.bmp";
+	c->bmpversion = 5;
+	c->bpp = 24;
+	c->pal_entries = 0;
+	c->embed_profile = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
