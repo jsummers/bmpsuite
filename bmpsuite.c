@@ -92,6 +92,7 @@ struct context {
 	int dither;
 	int topdown;
 	int embed_profile;
+	int link_profile;
 	int alphahack32;
 	int halfheight;
 	int zero_biSizeImage;
@@ -621,6 +622,17 @@ done:
 	return retval;
 }
 
+static int write_lprofile(struct context *c)
+{
+	static const char prof_fn[] = "C:\\temp\\test\x95\xeb.icc";
+
+	c->profile_offset = c->bitsoffset + c->bitssize + 10;
+	c->profile_size = 1+strlen(prof_fn);
+	memcpy(&c->mem[c->profile_offset], prof_fn, c->profile_size);
+	c->mem_used = c->profile_offset + c->profile_size;
+	return 1;
+}
+
 static void write_bitfields(struct context *c)
 {
 	size_t offs;
@@ -815,6 +827,9 @@ static void write_bitmapinfoheader(struct context *c)
 			if(c->embed_profile) {
 				set_uint32(c,14+56,0x4d424544); // CSType = PROFILE_EMBEDDED
 			}
+			else if(c->link_profile) {
+				set_uint32(c,14+56,0x4c494e4b); // CSType = PROFILE_LINKED
+			}
 			else {
 				set_uint32(c,14+56,0x73524742); // CSType = sRGB
 			}
@@ -822,7 +837,7 @@ static void write_bitmapinfoheader(struct context *c)
 	}
 	if(c->headersize>=124) {
 		set_uint32(c,14+108,4); // Rendering intent = Perceptual
-		if(c->embed_profile) {
+		if(c->embed_profile || c->link_profile) {
 			set_uint32(c,14+112,c->profile_offset-14);
 			set_uint32(c,14+116,c->profile_size);
 		}
@@ -849,6 +864,9 @@ static int make_bmp(struct context *c)
 	}
 	if(c->embed_profile) {
 		write_profile(c,"data/srgb.icc");
+	}
+	else if(c->link_profile) {
+		write_lprofile(c);
 	}
 	if(c->headersize<40)
 		write_bitmapcoreheader(c);
@@ -941,6 +959,7 @@ static void defaultbmp(struct context *c)
 	c->dither = 0;
 	c->topdown = 0;
 	c->embed_profile = 0;
+	c->link_profile = 0;
 	c->profile_offset = 0;
 	c->profile_size = 0;
 	c->alphahack32 = 0;
@@ -1331,6 +1350,15 @@ static int run(struct context *c)
 	c->bpp = 24;
 	c->pal_entries = 0;
 	c->embed_profile = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "q/rgb24lprof.bmp";
+	c->headersize = 124;
+	c->bpp = 24;
+	c->pal_entries = 0;
+	c->link_profile = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
