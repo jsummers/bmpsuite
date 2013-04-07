@@ -1270,7 +1270,7 @@ static int run(struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
-	c->filename = "b/pal2.bmp";
+	c->filename = "q/pal2.bmp";
 	c->bpp = 2;
 	c->pal_entries = 4;
 	set_calculated_fields(c);
