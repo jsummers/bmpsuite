@@ -654,7 +654,7 @@ static void write_palette(struct context *c)
 	int bppe; // bytes per palette entry
 
 	offs = 14+c->headersize+c->bitfieldssize;
-	bppe = (c->headersize<40) ? 3 : 4;
+	bppe = (c->headersize<=12) ? 3 : 4;
 
 	if(c->bpp==8) {
 		if(c->palette_reserve) {
@@ -774,18 +774,21 @@ static void write_bitmapinfoheader(struct context *c)
 	}
 	set_int16(c,14+12,(c->bad_planes) ? 30000 : 1); // biPlanes
 	set_int16(c,14+14,(c->bad_bitcount) ? 30000 : c->bpp); // biBitCount
-	set_int32(c,14+16,c->compression);
-	if(c->zero_biSizeImage)
-		set_int32(c,14+20,0);
-	else if(c->bad_biSizeImage)
-		set_int32(c,14+20,0x7eeeeeee);
-	else
-		set_int32(c,14+20,c->bitssize);
 
-	set_int32(c,14+24,c->xpelspermeter);
-	set_int32(c,14+28,c->ypelspermeter);
-	set_int32(c,14+32,(c->bad_palettesize) ? 0x12341234 : c->clr_used); // biClrUsed
-	set_int32(c,14+36,0); // biClrImportant
+	if(c->headersize>=40) {
+		set_int32(c,14+16,c->compression);
+		if(c->zero_biSizeImage)
+			set_int32(c,14+20,0);
+		else if(c->bad_biSizeImage)
+			set_int32(c,14+20,0x7eeeeeee);
+		else
+			set_int32(c,14+20,c->bitssize);
+
+		set_int32(c,14+24,c->xpelspermeter);
+		set_int32(c,14+28,c->ypelspermeter);
+		set_int32(c,14+32,(c->bad_palettesize) ? 0x12341234 : c->clr_used); // biClrUsed
+		set_int32(c,14+36,0); // biClrImportant
+	}
 
 	if(c->headersize>=108) {
 		if(c->compression==3) {
@@ -868,7 +871,7 @@ static int make_bmp(struct context *c)
 	else if(c->link_profile) {
 		write_lprofile(c);
 	}
-	if(c->headersize<40)
+	if(c->headersize<=12)
 		write_bitmapcoreheader(c);
 	else
 		write_bitmapinfoheader(c);
@@ -919,7 +922,7 @@ static void set_calculated_fields(struct context *c)
 		c->clr_used = c->pal_entries;
 	}
 
-	if(c->headersize<40) {
+	if(c->headersize<=12) {
 		c->pal_entries = 1<<c->bpp;
 		c->clr_used = c->pal_entries;
 		c->palettesize = c->pal_entries*3;
@@ -999,6 +1002,19 @@ static int run(struct context *c)
 	defaultbmp(c);
 	c->filename = "g/pal8os2.bmp";
 	c->headersize = 12;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "q/pal8os2v2-16.bmp";
+	c->headersize = 16;
+	c->pal_entries = 256;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "q/pal8os2v2.bmp";
+	c->headersize = 64;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
