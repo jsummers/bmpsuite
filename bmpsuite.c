@@ -923,7 +923,6 @@ static void set_calculated_fields(struct context *c)
 	}
 
 	if(c->headersize<=12) {
-		c->pal_entries = 1<<c->bpp;
 		c->clr_used = c->pal_entries;
 		c->palettesize = c->pal_entries*3;
 	}
@@ -1002,6 +1001,14 @@ static int run(struct context *c)
 	defaultbmp(c);
 	c->filename = "g/pal8os2.bmp";
 	c->headersize = 12;
+	c->pal_entries = 256;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "q/pal8os2sp.bmp";
+	c->headersize = 12;
+	c->pal_entries = 252;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
