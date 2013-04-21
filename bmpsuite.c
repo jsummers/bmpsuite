@@ -1270,7 +1270,7 @@ static int run(struct context *c)
 	c->filename = "b/badheadersize.bmp";
 	c->bpp = 1;
 	c->pal_entries = 2;
-	c->headersize = 44;
+	c->headersize = 66;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
