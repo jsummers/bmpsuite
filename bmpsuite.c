@@ -1586,6 +1586,18 @@ static int run(struct context *c)
 	c->bitfieldssize = 12;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
+	
+	defaultbmp(c);
+	c->filename = "q/rgb32-7187.bmp";
+	c->headersize = 52;
+	c->bpp = 32;
+	c->compression = BI_BITFIELDS;
+	c->pal_entries = 0;
+	c->bf_r = 0xfe000000; c->nbits_r = 7; c->bf_shift_r = 25;
+	c->bf_g = 0x01ffff80; c->nbits_g = 18; c->bf_shift_g = 7;
+	c->bf_b = 0x0000007f; c->nbits_b = 7; c->bf_shift_b = 0;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
 	c->filename = "q/rgba32.bmp";
@@ -1608,6 +1620,19 @@ static int run(struct context *c)
 	c->bf_r = 0x0000ff00; c->nbits_r =  8; c->bf_shift_r =  8;
 	c->bf_g = 0x0fff0000; c->nbits_g = 12; c->bf_shift_g = 16;
 	c->bf_b = 0x000000ff; c->nbits_b =  8; c->bf_shift_b =  0;
+	c->bf_a = 0xf0000000; c->nbits_a =  4; c->bf_shift_a = 28;
+	c->pal_entries = 0;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+	
+	defaultbmp(c);
+	c->filename = "q/rgba32-61754.bmp";
+	c->headersize = 56;
+	c->bpp = 32;
+	c->compression = BI_BITFIELDS;
+	c->bf_r = 0x0fc00000; c->nbits_r =  6; c->bf_shift_r = 22;
+	c->bf_g = 0x003fffe0; c->nbits_g = 17; c->bf_shift_g =  5;
+	c->bf_b = 0x0000001f; c->nbits_b =  5; c->bf_shift_b =  0;
 	c->bf_a = 0xf0000000; c->nbits_a =  4; c->bf_shift_a = 28;
 	c->pal_entries = 0;
 	set_calculated_fields(c);
