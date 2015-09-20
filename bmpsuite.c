@@ -301,7 +301,7 @@ static void set_pixel(struct context *c, int x, int y,
 		g2 = scale_to_int(g,(1<<c->nbits_g)-1);
 		b2 = scale_to_int(b,(1<<c->nbits_b)-1);
 		if(c->alphahack32) a = 1.0 - ((double)y)/63.0;
-		if(c->bf_a || c->alphahack32) a2 = scale_to_int(a,255);
+		if(c->bf_a || c->alphahack32) a2 = scale_to_int(a,(1<<c->nbits_a)-1);
 		else a2 = 0;
 		u = (r2<<c->bf_shift_r) | (g2<<c->bf_shift_g) | (b2<<c->bf_shift_b);
 		if(c->bf_a) u |= a2<<c->bf_shift_a;
@@ -876,14 +876,19 @@ static void write_bitmapinfoheader(struct context *c)
 		set_int32(c,14+32,(c->bad_palettesize) ? 0x12341234 : c->clr_used); // biClrUsed
 		set_int32(c,14+36,0); // biClrImportant
 	}
-
-	if(c->headersize>=108) {
+	if(c->headersize>=52) {
 		if(c->compression==3) {
 			set_uint32(c,14+40,c->bf_r);
 			set_uint32(c,14+44,c->bf_g);
 			set_uint32(c,14+48,c->bf_b);
+		}
+	}
+	if(c->headersize>=56) {
+		if(c->compression==3) {
 			set_uint32(c,14+52,c->bf_a);
 		}
+	}
+	if(c->headersize>=108) {
 
 		if(c->headersize==108) {
 			// Modern documentation lists LCS_CALIBRATED_RGB as the only legal
@@ -1456,6 +1461,20 @@ static int run(struct context *c)
 	c->bf_a = 0x0000f000; c->nbits_a = 4; c->bf_shift_a = 12;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
+	
+	defaultbmp(c);
+	c->filename = "q/rgba16-1924.bmp";
+	c->headersize = 56;
+	c->bpp = 16;
+	c->pal_entries = 0;
+	c->compression = BI_BITFIELDS;
+	c->bf_r = 0x00000800; c->nbits_r =  1; c->bf_shift_r = 11;
+	c->bf_g = 0x000001ff; c->nbits_g =  9; c->bf_shift_g =  0;
+	c->bf_b = 0x00000600; c->nbits_b =  2; c->bf_shift_b =  9;
+	c->bf_a = 0x0000f000; c->nbits_a =  4; c->bf_shift_a = 12;
+	c->dither = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
 	c->filename = "q/rgb16-231.bmp";
@@ -1466,6 +1485,19 @@ static int run(struct context *c)
 	c->bf_g = 0x0000000e; c->nbits_g = 3; c->bf_shift_g = 1;
 	c->bf_b = 0x00000001; c->nbits_b = 1; c->bf_shift_b = 0;
 	c->bitfieldssize = 12;
+	c->dither = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+	
+	defaultbmp(c);
+	c->filename = "q/rgb16-3103.bmp";
+	c->headersize = 52;
+	c->bpp = 16;
+	c->pal_entries = 0;
+	c->compression = BI_BITFIELDS;
+	c->bf_r = 0x00000038; c->nbits_r =  3; c->bf_shift_r = 3;
+	c->bf_g = 0x0000ffc0; c->nbits_g = 10; c->bf_shift_g = 6;
+	c->bf_b = 0x00000007; c->nbits_b =  3; c->bf_shift_b = 0;
 	c->dither = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
@@ -1539,6 +1571,7 @@ static int run(struct context *c)
 	c->nbits_r = 8; c->bf_shift_r = 16;
 	c->nbits_g = 8; c->bf_shift_g = 8;
 	c->nbits_b = 8; c->bf_shift_b = 0;
+	c->nbits_a = 8;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
@@ -1563,6 +1596,19 @@ static int run(struct context *c)
 	c->bf_g = 0x0000ff00; c->nbits_g = 8; c->bf_shift_g = 8;
 	c->bf_b = 0x000000ff; c->nbits_b = 8; c->bf_shift_b = 0;
 	c->bf_a = 0x00ff0000; c->nbits_a = 8; c->bf_shift_a = 16;
+	c->pal_entries = 0;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+	
+	defaultbmp(c);
+	c->filename = "q/rgba32-81284.bmp";
+	c->headersize = 56;
+	c->bpp = 32;
+	c->compression = BI_BITFIELDS;
+	c->bf_r = 0x0000ff00; c->nbits_r =  8; c->bf_shift_r =  8;
+	c->bf_g = 0x0fff0000; c->nbits_g = 12; c->bf_shift_g = 16;
+	c->bf_b = 0x000000ff; c->nbits_b =  8; c->bf_shift_b =  0;
+	c->bf_a = 0xf0000000; c->nbits_a =  4; c->bf_shift_a = 28;
 	c->pal_entries = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;

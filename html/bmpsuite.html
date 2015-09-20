@@ -341,6 +341,18 @@ level of support for it is arguably not important.</p>
   bit-shifting (possibly including one round of bit replication), instead of
   proper scaling.</td>
  </tr>
+ 
+  <tr>
+  <td class=q>q/rgb16-3103.bmp</td>
+  <td>3</td>
+  <td class=b><img src="rgb16-3103.png"></td>
+  <td class=b><img src="../q/rgb16-3103.bmp"></td>
+  <td>Another unusual and silly 16-bit image, with 3 red bits, 10 green bits, and 3
+  blue bits. Most viewers do support this image, but the colors may be darkened
+  with a green shadow. That&rsquo;s because they&rsquo;re doing simple
+  bit-shifting (possibly including one round of bit replication), instead of
+  proper scaling.</td>
+ </tr>
 
  <tr>
   <td class=q>q/rgba16-4444.bmp</td>
@@ -351,6 +363,22 @@ level of support for it is arguably not important.</p>
    channel, and 4 bits for the alpha channel.
    It&rsquo;s not clear if this is valid, but I can&rsquo;t find anything that
    suggests it isn&rsquo;t.
+   </td>
+ </tr>
+ 
+  <tr>
+  <td class=q>q/rgba16-1924.bmp</td>
+  <td>5</td>
+  <td class=b><img src="rgba16-1924.png"></td>
+  <td class=b><img src="../q/rgba16-1924.bmp"></td>
+  <td>A 16-bit image with an alpha channel. There are 1 red bit, 9 green bits, 2
+  blue bits and 4 bits for the alpha channel.
+   It&rsquo;s not clear if this is valid, but I can&rsquo;t find anything that
+   suggests it isn&rsquo;t.
+   Most viewers do support this image, but the colors may be darkened
+  with a blue-green shadow. That&rsquo;s because they&rsquo;re doing simple
+  bit-shifting (possibly including one round of bit replication), instead of
+  proper scaling.
    </td>
  </tr>
 
@@ -468,6 +496,18 @@ level of support for it is arguably not important.</p>
    so it&rsquo;s <i>possible</i> that this file is not correctly formed.
    The color channels are in an unusual order, to prevent viewers from
    passing this test by making a lucky guess.</td>
+ </tr>
+
+ <tr>
+  <td class=q>q/rgba32-81284.bmp</td>
+  <td>5</td>
+  <td class=b><img src="rgba32-81284.png"></td>
+  <td class=b><img src="../q/rgba32-81284.bmp"></td>
+  <td>A BMP with an alpha channel. Transparency is barely documented,
+   so it&rsquo;s <i>possible</i> that this file is not correctly formed.
+   The color channels are in an unusual order, to prevent viewers from
+   passing this test by making a lucky guess. All 32bits are used: 8 each for red and
+   blue, 12 for green, and 4 for alpha. </td>
  </tr>
 
  <tr>
