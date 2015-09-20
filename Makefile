@@ -26,7 +26,7 @@ stamp: $(BMPSUITE)
 	touch stamp
 
 checksums checksums.tmp: stamp
-	md5sum g/* q/* b/* > $@
+	md5sum g/* q/* b/* | sort -k2 > $@
 
 # check2 is not portable, due to differences in sort order, and in md5sum's
 # output. But it's useful for development, because it can find unlisted files.
