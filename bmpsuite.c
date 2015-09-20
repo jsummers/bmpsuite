@@ -83,6 +83,7 @@ struct context {
 #define BI_ALPHABITFIELDS 6
 	int compression;
 
+	int pal_gs; // grayscale palette
 	int pal_wb; // 2-color, palette[0] = white
 	int pal_bg; // 2-color, blue & green
 	int pal_p1; // 1-color
@@ -340,21 +341,71 @@ static void set_pixel(struct context *c, int x, int y,
 	}
 	else if(c->bpp==8) {
 		offs = row_offs + x;
-		tmp1 = ordered_dither(r,5,x,y);
-		tmp2 = ordered_dither(g,6,x,y);
-		tmp3 = ordered_dither(b,5,x,y);
-		p = tmp1 + tmp2*6 + tmp3*42;
-		if(c->palette_reserve) {
-			if(p<255) p++;
+		if (c->pal_gs) {
+			double prev = 0.0;
+			double current = 0.0;
+			int entries = c->pal_entries - c->palette_reserve - 1;
+
+			tmpd = srgb_to_linear(r)*0.212655
+			 + srgb_to_linear(g)*0.715158
+			 + srgb_to_linear(b)*0.072187;
+			
+			p = 1;
+			current = srgb_to_linear(p / (double)entries);
+			while ((tmpd > current) && (p < entries))
+			{
+				p++;
+				prev = current;
+				current = srgb_to_linear(p / (double)entries);
+			}
+			if (!ordered_dither_lowlevel((tmpd-prev)/(current-prev),x,y))
+				p--;
+			if(c->palette_reserve) {
+				if(p<c->pal_entries) p++;
+			}
+		}
+		else {
+			tmp1 = ordered_dither(r,5,x,y);
+			tmp2 = ordered_dither(g,6,x,y);
+			tmp3 = ordered_dither(b,5,x,y);
+			p = tmp1 + tmp2*6 + tmp3*42;
+			if(c->palette_reserve) {
+				if(p<255) p++;
+			}
 		}
 		c->mem[c->bitsoffset+offs] = p;
 	}
 	else if(c->bpp==4) {
 		offs = row_offs + x/2;
-		tmp1 = ordered_dither(r,1,x,y);
-		tmp2 = ordered_dither(g,2,x,y);
-		tmp3 = ordered_dither(b,1,x,y);
-		p = tmp1 + tmp2*2 + tmp3*6;
+		if (c->pal_gs) {
+			double prev = 0.0;
+			double current = 0.0;
+			int entries = c->pal_entries - c->palette_reserve - 1;
+
+			tmpd = srgb_to_linear(r)*0.212655
+			 + srgb_to_linear(g)*0.715158
+			 + srgb_to_linear(b)*0.072187;
+			
+			p = 1;
+			current = srgb_to_linear(p / (double)entries);
+			while ((tmpd > current) && (p < entries))
+			{
+				p++;
+				prev = current;
+				current = srgb_to_linear(p / (double)entries);
+			}
+			if (!ordered_dither_lowlevel((tmpd-prev)/(current-prev),x,y))
+				p--;
+			if(c->palette_reserve) {
+				if(p<c->pal_entries) p++;
+			}
+		}
+		else {
+			tmp1 = ordered_dither(r,1,x,y);
+			tmp2 = ordered_dither(g,2,x,y);
+			tmp3 = ordered_dither(b,1,x,y);
+			p = tmp1 + tmp2*2 + tmp3*6;
+		}
 		if(x%2)
 			c->mem[c->bitsoffset+offs] |= p;
 		else
@@ -662,18 +713,31 @@ static void write_palette(struct context *c)
 			c->mem[offs+1] = 0;
 			c->mem[offs+0] = 255;
 		}
-
-		// R6G7B6 palette
-		// Entry for a given (R,G,B) is R + G*6 + B*42
-		for(i=c->palette_reserve;i<c->pal_entries;i++) {
-			ii = i-c->palette_reserve;
-			if(i>=252+c->palette_reserve) continue;
-			r = ii%6;
-			g = (ii%42)/6;
-			b = ii/42;
-			c->mem[offs+bppe*i+2] = scale_to_int( ((double)r)/5.0, 255);
-			c->mem[offs+bppe*i+1] = scale_to_int( ((double)g)/6.0, 255);
-			c->mem[offs+bppe*i+0] = scale_to_int( ((double)b)/5.0, 255);
+		
+		if(c->pal_gs) {
+			// Grayscale palette
+			for(i=c->palette_reserve;i<c->pal_entries;i++) {
+				ii = i-c->palette_reserve;
+				if(i>=252+c->palette_reserve) continue;
+				
+				c->mem[offs+bppe*i+2] = scale_to_int(ii/(double)(c->pal_entries - c->palette_reserve - 1), 255);
+				c->mem[offs+bppe*i+1] = scale_to_int(ii/(double)(c->pal_entries - c->palette_reserve - 1), 255);
+				c->mem[offs+bppe*i+0] = scale_to_int(ii/(double)(c->pal_entries - c->palette_reserve - 1), 255);
+			}
+		}
+		else {
+			// R6G7B6 palette
+			// Entry for a given (R,G,B) is R + G*6 + B*42
+			for(i=c->palette_reserve;i<c->pal_entries;i++) {
+				ii = i-c->palette_reserve;
+				if(i>=252+c->palette_reserve) continue;
+				r = ii%6;
+				g = (ii%42)/6;
+				b = ii/42;
+				c->mem[offs+bppe*i+2] = scale_to_int( ((double)r)/5.0, 255);
+				c->mem[offs+bppe*i+1] = scale_to_int( ((double)g)/6.0, 255);
+				c->mem[offs+bppe*i+0] = scale_to_int( ((double)b)/5.0, 255);
+			}
 		}
 	}
 	else if(c->bpp==4) {
@@ -683,22 +747,45 @@ static void write_palette(struct context *c)
 			c->mem[offs+0] = 255;
 		}
 
-		for(i=c->palette_reserve;i<c->pal_entries;i++) {
-			ii = i-c->palette_reserve;
-			r = ii%2;
-			g = (ii%6)/2;
-			b = ii/6;
-			c->mem[offs+4*i+2] = scale_to_int( ((double)r)/1.0, 255);
-			c->mem[offs+4*i+1] = scale_to_int( ((double)g)/2.0, 255);
-			c->mem[offs+4*i+0] = scale_to_int( ((double)b)/1.0, 255);
+		if(c->pal_gs) {
+			// Grayscale palette
+			for(i=c->palette_reserve;i<c->pal_entries;i++) {
+				ii = i-c->palette_reserve;
+				c->mem[offs+bppe*i+2] = scale_to_int(ii/(double)(c->pal_entries - c->palette_reserve - 1), 255);
+				c->mem[offs+bppe*i+1] = scale_to_int(ii/(double)(c->pal_entries - c->palette_reserve - 1), 255);
+				c->mem[offs+bppe*i+0] = scale_to_int(ii/(double)(c->pal_entries - c->palette_reserve - 1), 255);
+			}
+		}
+		else {
+			for(i=c->palette_reserve;i<c->pal_entries;i++) {
+				ii = i-c->palette_reserve;
+				r = ii%2;
+				g = (ii%6)/2;
+				b = ii/6;
+				c->mem[offs+4*i+2] = scale_to_int( ((double)r)/1.0, 255);
+				c->mem[offs+4*i+1] = scale_to_int( ((double)g)/2.0, 255);
+				c->mem[offs+4*i+0] = scale_to_int( ((double)b)/1.0, 255);
+			}
 		}
 	}
 	else if(c->bpp==2) {
-		for(i=0;i<4;i++) {
-			// A 4-shade grayscale palette
-			c->mem[offs+4*i+2] = 85*i;
-			c->mem[offs+4*i+1] = 85*i;
-			c->mem[offs+4*i+0] = 85*i;
+		if(c->pal_gs) {
+			for(i=0;i<4;i++) {
+				// A 4-shade grayscale palette
+				c->mem[offs+4*i+2] = 85*i;
+				c->mem[offs+4*i+1] = 85*i;
+				c->mem[offs+4*i+0] = 85*i;
+			}
+		}
+		else {
+			for(i=0;i<4;i++) {
+				r = i%2;
+				g = (i == 3) ? 1 : 0;
+				b = i/2;
+				c->mem[offs+4*i+2] = scale_to_int( ((double)r)/1.0, 255);
+				c->mem[offs+4*i+1] = scale_to_int( ((double)g)/1.0, 255);
+				c->mem[offs+4*i+0] = scale_to_int( ((double)b)/1.0, 255);
+			}
 		}
 	}
 	else if(c->bpp==1) {
@@ -955,6 +1042,7 @@ static void defaultbmp(struct context *c)
 	c->compression = 0; // BI_RGB
 	c->xpelspermeter = 2835; // = about 72dpi
 	c->ypelspermeter = 2835;
+	c->pal_gs = 0;
 	c->pal_wb = 0;
 	c->pal_bg = 0;
 	c->pal_p1 = 0;
@@ -995,6 +1083,12 @@ static int run(struct context *c)
 
 	defaultbmp(c);
 	c->filename = "g/pal8.bmp";
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+	
+	defaultbmp(c);
+	c->filename = "g/pal8gs.bmp";
+	c->pal_gs = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
@@ -1158,6 +1252,14 @@ static int run(struct context *c)
 	c->pal_entries = 12;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
+	
+	defaultbmp(c);
+	c->filename = "g/pal4gs.bmp";
+	c->bpp = 4;
+	c->pal_entries = 12;
+	c->pal_gs = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
 	c->filename = "g/pal4rle.bmp";
@@ -1294,6 +1396,14 @@ static int run(struct context *c)
 
 	defaultbmp(c);
 	c->filename = "q/pal2.bmp";
+	c->bpp = 2;
+	c->pal_entries = 4;
+	c->pal_gs = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+	
+	defaultbmp(c);
+	c->filename = "q/pal2color.bmp";
 	c->bpp = 2;
 	c->pal_entries = 4;
 	set_calculated_fields(c);
