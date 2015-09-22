@@ -105,6 +105,9 @@ struct context {
 	int bad_planes;
 	int bad_palettesize;
 	int bad_rle;
+	int bad_rle_bis;
+	int bad_rle_ter;
+	int cut_rle;
 	int bad_eof;
 	int rletrns;
 	int palette_reserve; // Reserve palette color #0
@@ -504,7 +507,7 @@ static int write_bits_rle(struct context *c)
 	if(!run_lens) return 0;
 	thresh = c->compression==CMPR_RLE4 ? 5 : 4;
 
-	for(j=0;j<c->h;j++) {
+	for(j=0;j< (c->cut_rle ? c->h - 5 : c->h);j++) {
 		j_logical = c->topdown ? j : c->h-1-j;
 
 		// Temporarily store the palette indices in row[]
@@ -538,10 +541,15 @@ static int write_bits_rle(struct context *c)
 			if(c->rletrns && row[rowpos]==0) { // transparent pixel
 				c->mem[curpos++] = 0;
 				c->mem[curpos++] = 2;
-				c->mem[curpos++] = run_lens[rowpos] + (unsigned char)(c->bad_rle?5:0); // x delta
-				c->mem[curpos++] = (unsigned char)(c->bad_rle?2:0); // y delta
+				c->mem[curpos++] = run_lens[rowpos] + (unsigned char)(c->bad_rle?5:0) + (unsigned char)(c->bad_rle_bis?127:0); // x delta
+				c->mem[curpos++] = (unsigned char)(c->bad_rle?2:0) + (unsigned char)(c->bad_rle_ter?1:0); // y delta
 				rowpos += run_lens[rowpos];
 				continue;
+			}
+			if (c->cut_rle && (rowpos > (pixels_per_row/2))) {
+				if ((j & 3) == 0) {
+					break;
+				}
 			}
 
 			if(run_lens[rowpos]<thresh) {
@@ -606,6 +614,10 @@ static int write_bits_rle(struct context *c)
 		// Write EOL (0 0) or EOBMP (0 1) marker.
 		c->mem[curpos++] = 0;
 		c->mem[curpos++] = (j==c->h-1) ? 1 : 0;
+	}
+	if (c->cut_rle) {
+		c->mem[curpos++] = 0;
+		c->mem[curpos++] = 1;
 	}
 
 	free(row);
@@ -1068,6 +1080,9 @@ static void defaultbmp(struct context *c)
 	c->bad_planes = 0;
 	c->bad_palettesize = 0;
 	c->bad_rle = 0;
+	c->bad_rle_bis = 0;
+	c->bad_rle_ter = 0;
+	c->cut_rle = 0;
 	c->bad_eof = 0;
 	c->extrabytessize = 0;
 	c->palette_reserve = 0;
@@ -1224,6 +1239,16 @@ static int run(struct context *c)
 	c->compression = CMPR_RLE8;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
+	
+	defaultbmp(c);
+	c->filename = "q/pal8rlecut.bmp";
+	c->compression = CMPR_RLE8;
+	c->rletrns = 1;
+	c->pal_entries = 253;
+	c->palette_reserve = 1;
+	c->cut_rle = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
 	c->filename = "b/badrle.bmp";
@@ -1232,6 +1257,61 @@ static int run(struct context *c)
 	c->pal_entries = 253;
 	c->palette_reserve = 1;
 	c->bad_rle = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+	
+	defaultbmp(c);
+	c->filename = "b/badrlebis.bmp";
+	c->compression = CMPR_RLE8;
+	c->rletrns = 1;
+	c->pal_entries = 253;
+	c->palette_reserve = 1;
+	c->bad_rle_bis = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+	
+	defaultbmp(c);
+	c->filename = "b/badrleter.bmp";
+	c->compression = CMPR_RLE8;
+	c->rletrns = 1;
+	c->pal_entries = 253;
+	c->palette_reserve = 1;
+	c->bad_rle_bis = 1;
+	c->bad_rle_ter = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+	
+	defaultbmp(c);
+	c->filename = "b/badrle4.bmp";
+	c->bpp = 4;
+	c->compression = CMPR_RLE4;
+	c->rletrns = 1;
+	c->pal_entries = 13;
+	c->palette_reserve = 1;
+	c->bad_rle = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+	
+	defaultbmp(c);
+	c->filename = "b/badrle4bis.bmp";
+	c->bpp = 4;
+	c->compression = CMPR_RLE4;
+	c->rletrns = 1;
+	c->pal_entries = 13;
+	c->palette_reserve = 1;
+	c->bad_rle_bis = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+	
+	defaultbmp(c);
+	c->filename = "b/badrle4ter.bmp";
+	c->bpp = 4;
+	c->compression = CMPR_RLE4;
+	c->rletrns = 1;
+	c->pal_entries = 13;
+	c->palette_reserve = 1;
+	c->bad_rle_bis = 1;
+	c->bad_rle_ter = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
@@ -1271,6 +1351,17 @@ static int run(struct context *c)
 	c->bpp = 4;
 	c->compression = CMPR_RLE4;
 	c->pal_entries = 12;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+	
+	defaultbmp(c);
+	c->filename = "q/pal4rlecut.bmp";
+	c->bpp = 4;
+	c->compression = CMPR_RLE4;
+	c->rletrns = 1;
+	c->pal_entries = 13;
+	c->palette_reserve = 1;
+	c->cut_rle = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 

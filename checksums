@@ -6,7 +6,12 @@ f39386d74b3a22c80b1c0125bd6fc8fd  b/badfilesize.bmp
 602ca8f666a99ff5249c6aba07e2a3f0  b/badheadersize.bmp
 622143f42eebdaf42dddceb59b4dddc8  b/badpalettesize.bmp
 4eb998a50578a58cc476743c13d7e210  b/badplanes.bmp
+2069858cf429dd947c83f32911a9b4e1  b/badrle4bis.bmp
+557843dc8307ab151f42ab5b7fa882d2  b/badrle4.bmp
+e9573d9f1dffbe3c54418887da431c56  b/badrle4ter.bmp
+e3e0ef8385a673bf259c5bfff3ac69db  b/badrlebis.bmp
 1f267105340f36e889bbfab3b39906cd  b/badrle.bmp
+78b0fd72fe72a0ca46eddf0bb6d13de1  b/badrleter.bmp
 f9e6f4befc14caf1461b43b1d186267b  b/badwidth.bmp
 b0ffebf97e84f1f523c89a769cfbf0b0  b/pal8badindex.bmp
 c1c186a905bcb299dd6dd421496de6ba  b/reallybig.bmp
@@ -40,12 +45,14 @@ e7f7174a4ab82a9efc28e76738d56c0a  g/rgb24pal.bmp
 29cce427b79fe3abf5b43f8f7a1156df  q/pal1p1.bmp
 5b782e8a45dd587dbdfca404c91dba16  q/pal2.bmp
 c25d68adfe03cce4d394f3272eae2207  q/pal2color.bmp
+20d662c606ab55f51b22a9c4e9cdbd5c  q/pal4rlecut.bmp
 e65bdb7e21a5c3225da8b8b39ff60067  q/pal4rletrns.bmp
 e784e40910612ffd659384ae72306518  q/pal8offs.bmp
 2f786b437ce5333201ff51c4fd2edf80  q/pal8os2sp.bmp
 3f5af5b3713f21492be88293d9679094  q/pal8os2v2-16.bmp
 18d95e36d7e62ad765e2c2ac15fb5186  q/pal8os2v2.bmp
 f9ac82a0bb4be51815f0a58391768ef0  q/pal8oversizepal.bmp
+505e7c605fe4847632249d5c222fb99d  q/pal8rlecut.bmp
 1710166027c130c93d087b3df58ee489  q/pal8rletrns.bmp
 93b882a5dd5819385fb076f0a0ddfcf1  q/rgb16-231.bmp
 219f4ade9edae36d934d6b4ff2bd0e29  q/rgb16-3103.bmp

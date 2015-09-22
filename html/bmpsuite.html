@@ -130,6 +130,19 @@ level of support for it is arguably not important.</p>
   make undefined pixels transparent, others make them black, and
   others assign them palette color 0 (purple, in this case).</td>
  </tr>
+ 
+ <tr>
+  <td class=q>q/pal4rlecut.bmp</td>
+  <td>3</td>
+  <td class=b><img src="pal4rlecut.png"><br>
+     or<br><img src="pal4rlecut-0.png"><br>
+     or<br><img src="pal4rlecut-b.png"></td>
+  <td class=b><img src="../q/pal4rlecut.bmp"></td>
+  <td>An RLE-compressed image that used &ldquo;delta&rdquo;
+  codes to skip over some pixels, leaving them undefined. EOL marker & EOBMP marker appear early. Some viewers
+  make undefined pixels transparent, others make them black, and
+  others assign them palette color 0 (purple, in this case).</td>
+ </tr>
 
  <tr>
   <td>g/pal8.bmp</td>
@@ -174,6 +187,16 @@ level of support for it is arguably not important.</p>
      or<br><img src="pal8rletrns-b.png"></td>
   <td class=b><img src="../q/pal8rletrns.bmp"></td>
   <td>8-bit version of q/pal4rletrns.bmp.</td>
+ </tr>
+ 
+ <tr>
+  <td class=q>q/pal8rlecut.bmp</td>
+  <td>3</td>
+  <td class=b><img src="pal8rlecut.png"><br>  
+     or<br><img src="pal8rlecut-0.png"><br>
+     or<br><img src="pal8rlecut-b.png"></td>
+  <td class=b><img src="../q/pal8rlecut.bmp"></td>
+  <td>8-bit version of q/pal4rlecut.bmp.</td>
  </tr>
 
  <tr>
@@ -609,11 +632,47 @@ level of support for it is arguably not important.</p>
  </tr>
 
  <tr>
+  <td class=bad>b/badrle4.bmp</td>
+  <td>3</td>
+  <td class=b>N/A</td>
+  <td class=b><img src="../b/badrle4.bmp"></td>
+  <td>An invalid RLE4-compressed image that tries to cause buffer overruns.</td>
+ </tr>
+ <tr>
+  <td class=bad>b/badrle4bis.bmp</td>
+  <td>3</td>
+  <td class=b>N/A</td>
+  <td class=b><img src="../b/badrle4bis.bmp"></td>
+  <td>Another invalid RLE4-compressed image that tries to cause buffer overruns.</td>
+ </tr>
+ <tr>
+  <td class=bad>b/badrle4ter.bmp</td>
+  <td>3</td>
+  <td class=b>N/A</td>
+  <td class=b><img src="../b/badrle4ter.bmp"></td>
+  <td>Another invalid RLE4-compressed image that tries to cause buffer overruns.</td>
+ </tr>
+ 
+ <tr>
   <td class=bad>b/badrle.bmp</td>
   <td>3</td>
   <td class=b>N/A</td>
   <td class=b><img src="../b/badrle.bmp"></td>
-  <td>An invalid RLE-compressed image that tries to cause buffer overruns.</td>
+  <td>8-bit version of b/badrle4.bmp.</td>
+ </tr>
+ <tr>
+  <td class=bad>b/badrlebis.bmp</td>
+  <td>3</td>
+  <td class=b>N/A</td>
+  <td class=b><img src="../b/badrlebis.bmp"></td>
+  <td>8-bit version of b/badrle4bis.bmp.</td>
+ </tr>
+ <tr>
+  <td class=bad>b/badrleter.bmp</td>
+  <td>3</td>
+  <td class=b>N/A</td>
+  <td class=b><img src="../b/badrleter.bmp"></td>
+  <td>8-bit version of b/badrle4ter.bmp.</td>
  </tr>
 
  <tr>
