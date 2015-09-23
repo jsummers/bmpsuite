@@ -1527,6 +1527,18 @@ static int run(struct context *c)
 	c->bitfieldssize = 12;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
+	
+	defaultbmp(c);
+	c->filename = "g/rgb16-880.bmp";
+	c->bpp = 16;
+	c->pal_entries = 0;
+	c->compression = BI_BITFIELDS;
+	c->bf_r = 0x0000ff00; c->nbits_r = 8; c->bf_shift_r = 8;
+	c->bf_g = 0x000000ff; c->nbits_g = 8; c->bf_shift_g = 0;
+	c->bf_b = 0x00000000; c->nbits_b = 0; c->bf_shift_b = 0;
+	c->bitfieldssize = 12;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
 	c->filename = "g/rgb16-565pal.bmp";
