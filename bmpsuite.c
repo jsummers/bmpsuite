@@ -1565,7 +1565,7 @@ static int run(struct context *c)
 	
 	defaultbmp(c);
 	c->filename = "q/rgba16-1924.bmp";
-	c->headersize = 56;
+	c->headersize = 124;
 	c->bpp = 16;
 	c->pal_entries = 0;
 	c->compression = BI_BITFIELDS;
