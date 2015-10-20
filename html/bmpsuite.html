@@ -375,15 +375,6 @@ level of support for it is arguably not important.</p>
  </tr>
  
  <tr>
-  <td>g/rgb16-880.bmp</td>
-  <td>3</td>
-  <td class=b><img src="rgb16-880.png"></td>
-  <td class=b><img src="../g/rgb16-880.bmp"></td>
-  <td>A 16-bit image with a BITFIELDS segment indicating 8 red, 8 green,
-   and 0 blue bits.
- </tr>
-
- <tr>
   <td class=q>q/rgba16-4444.bmp</td>
   <td>5</td>
   <td class=b><img src="rgba16-4444.png"></td>
@@ -723,6 +714,16 @@ level of support for it is arguably not important.</p>
   <td class=b>N/A</td>
   <td class=b><img src="../b/reallybig.bmp"></td>
   <td>An image with a very large reported width and height.</td>
+ </tr>
+
+ <tr>
+  <td class=bad>b/rgb16-880.bmp</td>
+  <td>3</td>
+  <td class=b><img src="rgb16-880.png"><br>(?)</td>
+  <td class=b><img src="../b/rgb16-880.bmp"></td>
+  <td>A 16-bit image with a BITFIELDS segment indicating 8 red, 8 green,
+   and 0 blue bits. The documentation doesn&rsquo;t say whether undefined
+   channels are legal, or how they should be handled.
  </tr>
 
  <tr>

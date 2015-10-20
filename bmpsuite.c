@@ -1527,7 +1527,7 @@ static int run(struct context *c)
 	if(!make_bmp_file(c)) goto done;
 	
 	defaultbmp(c);
-	c->filename = "g/rgb16-880.bmp";
+	c->filename = "b/rgb16-880.bmp";
 	c->bpp = 16;
 	c->pal_entries = 0;
 	c->compression = BI_BITFIELDS;
