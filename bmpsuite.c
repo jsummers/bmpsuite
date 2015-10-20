@@ -553,14 +553,12 @@ static int write_bits_rle(struct context *c)
 			}
 
 			if(run_lens[rowpos]<thresh) {
-				int nextstop;
 				// Consider writing an uncompressed segment
 				
 				// Find next run that's 'thresh' or larger
-				nextstop = -1;
 				for(k=rowpos;k<pixels_per_row;k++) {
-					if(c->rletrns && row[k]==0) { nextstop = k; break; } // Also have to stop at a transparent pixel
-					if(run_lens[k]>=thresh) { nextstop = k; break; }
+					if(c->rletrns && row[k]==0) {  break; } // Also have to stop at a transparent pixel
+					if(run_lens[k]>=thresh) { break; }
 				}
 				// If there's at least 3(?) pixels before it, write an uncompressed segment.
 				if(k != -1 && k-rowpos >= 3) {
