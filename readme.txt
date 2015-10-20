@@ -5,9 +5,11 @@ This is a set of Windows BMP image files, and a utility for generating them.
 Many different varieties of BMP files are included, and are intended to be
 useful for testing.
 
-Copyright (C) 2012-2013 Jason Summers
+Copyright (C) 2012-2015 Jason Summers
 <jason1@pobox.com>
 http://entropymine.com/jason/bmpsuite/
+
+Includes contributions by Matthieu Darbois.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
