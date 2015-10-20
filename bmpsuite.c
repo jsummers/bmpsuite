@@ -1592,13 +1592,13 @@ static int run(struct context *c)
 	
 	defaultbmp(c);
 	c->filename = "q/rgb16-3103.bmp";
-	c->headersize = 52;
 	c->bpp = 16;
 	c->pal_entries = 0;
 	c->compression = BI_BITFIELDS;
 	c->bf_r = 0x00000038; c->nbits_r =  3; c->bf_shift_r = 3;
 	c->bf_g = 0x0000ffc0; c->nbits_g = 10; c->bf_shift_g = 6;
 	c->bf_b = 0x00000007; c->nbits_b =  3; c->bf_shift_b = 0;
+	c->bitfieldssize = 12;
 	c->dither = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
