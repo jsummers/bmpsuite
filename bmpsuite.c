@@ -1715,7 +1715,7 @@ static int run(struct context *c)
 	
 	defaultbmp(c);
 	c->filename = "q/rgba32-81284.bmp";
-	c->headersize = 56;
+	c->headersize = 124;
 	c->bpp = 32;
 	c->compression = BI_BITFIELDS;
 	c->bf_r = 0x0000ff00; c->nbits_r =  8; c->bf_shift_r =  8;
@@ -1728,7 +1728,7 @@ static int run(struct context *c)
 	
 	defaultbmp(c);
 	c->filename = "q/rgba32-61754.bmp";
-	c->headersize = 56;
+	c->headersize = 124;
 	c->bpp = 32;
 	c->compression = BI_BITFIELDS;
 	c->bf_r = 0x0fc00000; c->nbits_r =  6; c->bf_shift_r = 22;
