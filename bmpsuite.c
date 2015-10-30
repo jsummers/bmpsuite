@@ -111,6 +111,7 @@ struct context {
 	int bad_eof;
 	int rletrns;
 	int palette_reserve; // Reserve palette color #0
+	int cbsize_flag;
 };
 
 static void set_int16(struct context *c, size_t offset, int v)
@@ -844,6 +845,8 @@ static void write_fileheader(struct context *c)
 	c->mem[1]='M';
 	if(c->bad_bfSize)
 		set_int32(c,2,0x7ddddddd);
+	else if(c->cbsize_flag)
+		set_int32(c,2,14+c->headersize);
 	else
 		set_int32(c,2,(int)c->mem_used);
 	set_int32(c,10,c->bitsoffset);
@@ -1088,6 +1091,7 @@ static void defaultbmp(struct context *c)
 	c->bf_r = c->bf_g = c->bf_b = c->bf_a = 0;
 	c->nbits_r = c->nbits_g = c->nbits_b = c->nbits_a = 0;
 	c->bf_shift_r = c->bf_shift_g = c->bf_shift_b = c->bf_shift_a = 0;
+	c->cbsize_flag = 0;
 	set_calculated_fields(c);
 }
 
@@ -1118,6 +1122,14 @@ static int run(struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
+	c->filename = "q/pal8os2-sz.bmp";
+	c->headersize = 12;
+	c->pal_entries = 256;
+	c->cbsize_flag = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
 	c->filename = "q/pal8os2sp.bmp";
 	c->headersize = 12;
 	c->pal_entries = 252;
@@ -1134,6 +1146,20 @@ static int run(struct context *c)
 	defaultbmp(c);
 	c->filename = "q/pal8os2v2.bmp";
 	c->headersize = 64;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "q/pal8os2v2-40sz.bmp";
+	c->headersize = 40;
+	c->cbsize_flag = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "q/pal8os2v2-sz.bmp";
+	c->headersize = 64;
+	c->cbsize_flag = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 

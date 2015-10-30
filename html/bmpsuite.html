@@ -276,6 +276,19 @@ level of support for it is arguably not important.</p>
  </tr>
 
  <tr>
+  <td class=q>q/pal8os2-sz.bmp</td>
+  <td>OS/2v1</td>
+  <td class=b><img src="pal8.png"></td>
+  <td class=b><img src="../q/pal8os2-sz.bmp"></td>
+  <td>Some OS/2 BMP specifications say that the <i>size</i> field in the file
+   header should be set to the aggregate size of the file header and
+   <i>infoheader</i>, instead of the total file size.
+   For OS/2v1, that means it will always be 26.
+   BMP decoders usually ignore this field, so it shouldn&rsquo;t
+   cause a problem.</td>
+ </tr>
+
+ <tr>
   <td class=q>q/pal8os2sp.bmp</td>
   <td>OS/2v1</td>
   <td class=b><img src="pal8.png"></td>
@@ -298,6 +311,26 @@ level of support for it is arguably not important.</p>
   <td class=b><img src="pal8.png"></td>
   <td class=b><img src="../q/pal8os2v2-16.bmp"></td>
   <td>An OS/2v2 bitmap whose header has only 16 bytes, instead of the full 64.</td>
+ </tr>
+
+ <tr>
+  <td class=q>q/pal8os2v2-sz.bmp</td>
+  <td>OS/2v2</td>
+  <td class=b><img src="pal8.png"></td>
+  <td class=b><img src="../q/pal8os2v2-sz.bmp"></td>
+  <td>An OS/2v2 bitmap. Like q/pal8os2-sz.bmp, the <i>size</i> field is set to
+   the size of the headers (78), instead of the size of the file.</td>
+ </tr>
+
+ <tr>
+  <td class=q>q/pal8os2v2-40sz.bmp</td>
+  <td>OS/2v2</td>
+  <td class=b><img src="pal8.png"></td>
+  <td class=b><img src="../q/pal8os2v2-40sz.bmp"></td>
+  <td>An OS/2v2 bitmap, with a 40-byte header. Like q/pal8os2-sz.bmp,
+   the <i>size</i> field is set to the size of the headers (54),
+   instead of the size of the file. Except for that, this file
+   cannot be distinguished from a Windows BMPv3 file.</td>
  </tr>
 
  <tr>
