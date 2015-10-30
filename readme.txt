@@ -33,7 +33,7 @@ Files in the "g" directory I consider to be "good":
 Your program should definitely support them if it claims to support BMP.
 
 Files in the "q" directory I consider to be "questionable":
-These may be really unusual, or technically violate the documentation in some
+These may unusual or obsolete, or technically violate the documentation in some
 way, or I may be unsure about their validity.
 
 Files in the "b" directory I consider to be "bad":

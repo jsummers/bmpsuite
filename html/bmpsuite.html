@@ -91,7 +91,8 @@ level of support for it is arguably not important.</p>
   <td>3</td>
   <td class=b><img src="pal2color.png"></td>
   <td class=b><img src="../q/pal2color.bmp"></td>
-  <td>Same as pal2.bmp but with color palette instead of grayscale palette.</td>
+  <td>Same as pal2.bmp, but with a color palette instead of grayscale
+   palette.</td>
  </tr>
 
  <tr>
@@ -125,7 +126,7 @@ level of support for it is arguably not important.</p>
      or<br><img src="pal4rletrns-0.png"><br>
      or<br><img src="pal4rletrns-b.png"></td>
   <td class=b><img src="../q/pal4rletrns.bmp"></td>
-  <td>An RLE-compressed image that used &ldquo;delta&rdquo;
+  <td>An RLE-compressed image that uses &ldquo;delta&rdquo;
   codes to skip over some pixels, leaving them undefined. Some viewers
   make undefined pixels transparent, others make them black, and
   others assign them palette color 0 (purple, in this case).</td>
@@ -138,10 +139,8 @@ level of support for it is arguably not important.</p>
      or<br><img src="pal4rlecut-0.png"><br>
      or<br><img src="pal4rlecut-b.png"></td>
   <td class=b><img src="../q/pal4rlecut.bmp"></td>
-  <td>An RLE-compressed image that used &ldquo;delta&rdquo;
-  codes to skip over some pixels, leaving them undefined. EOL marker & EOBMP marker appear early. Some viewers
-  make undefined pixels transparent, others make them black, and
-  others assign them palette color 0 (purple, in this case).</td>
+  <td>An RLE-compressed image that uses &ldquo;delta&rdquo; codes,
+   and early EOL &amp; EOBMP markers, to skip over some pixels.</td>
  </tr>
 
  <tr>
@@ -167,8 +166,7 @@ level of support for it is arguably not important.</p>
   <td>3</td>
   <td class=b><img src="pal8gs.png"></td>
   <td class=b><img src="../g/pal8gs.bmp"></td>
-  <td>Our standard paletted image, with 252 grayscale palette colors, and 8
-   bits/pixel.</td>
+  <td>An 8-bit image with a palette of 252 grayscale colors.</td>
  </tr>
 
  <tr>
@@ -272,7 +270,8 @@ level of support for it is arguably not important.</p>
   <td>OS/2v1</td>
   <td class=b><img src="pal8.png"></td>
   <td class=b><img src="../g/pal8os2.bmp"></td>
-  <td>An OS/2-style bitmap.</td>
+  <td>An OS/2-style bitmap. This format can be called OS/2 BMPv1,
+   or Windows BMPv2.</td>
  </tr>
 
  <tr>
@@ -531,7 +530,10 @@ level of support for it is arguably not important.</p>
    other than 0.
    If the image becomes transparent toward the bottom, it probably means
    the viewer uses heuristics to guess whether the undefined
-   data represents transparency.</td>
+   data represents transparency.
+   Reportedly, in ICO icon format, a 32-bit image has transparency if any
+   of the could-be alpha samples are nonzero. Some BMP decoders probably
+   use the same algorithm for BMP.</td>
  </tr>
 
  <tr>
@@ -540,7 +542,7 @@ level of support for it is arguably not important.</p>
   <td class=b><img src="rgb24.png"></td>
   <td class=b><img src="../q/rgb32-111110.bmp"></td>
   <td>A 32 bits/pixel image, with all 32 bits used: 11 each for red and
-   green, and 10 for blue. As far as I know, this is perfectly valid, but it
+   green, and 10 for blue. As far as I know, this is valid, but it
    is unusual.</td>
  </tr>
 
