@@ -1,5 +1,5 @@
 BMP Suite
-Version 2.3
+Version 2.4
 
 This is a set of Windows BMP image files, and a utility for generating them.
 Many different varieties of BMP files are included, and are intended to be
