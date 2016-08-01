@@ -5,7 +5,7 @@ This is a set of Windows BMP image files, and a utility for generating them.
 Many different varieties of BMP files are included, and are intended to be
 useful for testing.
 
-Copyright (C) 2012-2015 Jason Summers
+Copyright (C) 2012-2016 Jason Summers
 <jason1@pobox.com>
 http://entropymine.com/jason/bmpsuite/
 

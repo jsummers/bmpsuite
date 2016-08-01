@@ -1,6 +1,6 @@
 //
 // BMP Suite (2012 rewrite)
-// Copyright (C) 2012 Jason Summers
+// Copyright (C) 2012-2016 Jason Summers
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -1590,6 +1590,19 @@ static int run(struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(c);
+	c->filename = "q/rgba16-5551.bmp";
+	c->headersize = 124;
+	c->bpp = 16;
+	c->pal_entries = 0;
+	c->compression = BI_BITFIELDS;
+	c->bf_r = 0x00007c00; c->nbits_r = 5; c->bf_shift_r = 10;
+	c->bf_g = 0x000003e0; c->nbits_g = 5; c->bf_shift_g = 5;
+	c->bf_b = 0x0000001f; c->nbits_b = 5; c->bf_shift_b = 0;
+	c->bf_a = 0x00008000; c->nbits_a = 1; c->bf_shift_a = 15;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
 	c->filename = "q/rgba16-1924.bmp";
 	c->headersize = 124;
 	c->bpp = 16;
@@ -1735,6 +1748,19 @@ static int run(struct context *c)
 	c->bf_g = 0x0000ff00; c->nbits_g = 8; c->bf_shift_g = 8;
 	c->bf_b = 0x000000ff; c->nbits_b = 8; c->bf_shift_b = 0;
 	c->bf_a = 0x00ff0000; c->nbits_a = 8; c->bf_shift_a = 16;
+	c->pal_entries = 0;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(c);
+	c->filename = "q/rgba32-1010102.bmp";
+	c->headersize = 124;
+	c->bpp = 32;
+	c->compression = BI_BITFIELDS;
+	c->bf_r = 0x3ff00000; c->nbits_r = 10; c->bf_shift_r = 20;
+	c->bf_g = 0x000ffc00; c->nbits_g = 10; c->bf_shift_g = 10;
+	c->bf_b = 0x000003ff; c->nbits_b = 10; c->bf_shift_b = 0;
+	c->bf_a = 0xc0000000; c->nbits_a = 2;  c->bf_shift_a = 30;
 	c->pal_entries = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
