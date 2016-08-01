@@ -2,6 +2,7 @@
 <html>
 
 <head>
+<meta charset="UTF-8">
 
 <title>BMP Suite Image List</title>
 
@@ -9,6 +10,8 @@
  .b { background:url(bkgd.png); }
  .q { background-color:#fff0e0; }
  .bad { background-color:#ffa0a0; }
+ .sz1 { width:127px; height:64px; }
+ .szbad { width:64px; height:64px; }
 </style>
 
 </head>
@@ -623,7 +626,7 @@ level of support for it is arguably not important.</p>
   <td class=bad>b/baddens1.bmp</td>
   <td>3</td>
   <td class=b>N/A</td>
-  <td class=b><img src="../b/baddens1.bmp"></td>
+  <td class=b><img class=sz1 src="../b/baddens1.bmp"></td>
   <td rowspan=2>Density (pixels per meter) suggests the image is <i>much</i>
       larger in one dimension than the other.</td>
  </tr>
@@ -632,7 +635,7 @@ level of support for it is arguably not important.</p>
   <td class=bad>b/baddens2.bmp</td>
   <td>3</td>
   <td class=b>N/A</td>
-  <td class=b><img src="../b/baddens2.bmp"></td>
+  <td class=b><img class=sz1 src="../b/baddens2.bmp"></td>
  </tr>
 
  <tr>
@@ -647,7 +650,7 @@ level of support for it is arguably not important.</p>
   <td class=bad>b/badheadersize.bmp</td>
   <td>?</td>
   <td class=b>N/A</td>
-  <td class=b><img src="../b/badheadersize.bmp"></td>
+  <td class=b><img class=sz1 src="../b/badheadersize.bmp"></td>
   <td>Header size is 66 bytes, which is not a valid size for any known BMP
    version.</td>
  </tr>
@@ -717,7 +720,7 @@ level of support for it is arguably not important.</p>
   <td class=bad>b/badwidth.bmp</td>
   <td>3</td>
   <td class=b>N/A</td>
-  <td class=b><img src="../b/badwidth.bmp"></td>
+  <td class=b><img class=szbad src="../b/badwidth.bmp"></td>
   <td>The image claims to be a negative number of pixels in width.</td>
  </tr>
 
@@ -734,7 +737,7 @@ level of support for it is arguably not important.</p>
   <td class=bad>b/reallybig.bmp</td>
   <td>3</td>
   <td class=b>N/A</td>
-  <td class=b><img src="../b/reallybig.bmp"></td>
+  <td class=b><img class=szbad src="../b/reallybig.bmp"></td>
   <td>An image with a very large reported width and height.</td>
  </tr>
 
