@@ -64,6 +64,11 @@ static const char *bmpovl[] = {
  "11111111111111111111.......111111............111111...111111.................."
 };
 
+struct global_context {
+	unsigned char *mem;
+};
+
+// Data specific to each image
 struct context {
 	const char *filename;
 	unsigned char *mem;
@@ -496,8 +501,8 @@ static int write_bits_rle(struct context *c)
 	size_t curpos; // where in c->mem to write to next
 	size_t rowpos;
 	int pixels_per_row;
-	unsigned char *row;
-	int *run_lens;
+	unsigned char *row = NULL;
+	int *run_lens = NULL;
 	int i,j;
 	int j_logical;
 	int k;
@@ -506,13 +511,14 @@ static int write_bits_rle(struct context *c)
 	int unc_len;
 	int unc_len_padded;
 	int thresh;
+	int retval = 0;
 
 	curpos = c->bitsoffset;
 	pixels_per_row = c->w;
 	row = malloc(pixels_per_row);
-	if(!row) return 0;
-	run_lens = (int*)malloc(sizeof(int)*pixels_per_row);
-	if(!run_lens) return 0;
+	if(!row) goto done;
+	run_lens = malloc(sizeof(int)*pixels_per_row);
+	if(!run_lens) goto done;
 	thresh = c->compression==CMPR_RLE4 ? 5 : 4;
 
 	for(j=0;j< (c->cut_rle ? c->h - 5 : c->h);j++) {
@@ -626,10 +632,14 @@ static int write_bits_rle(struct context *c)
 		c->mem[curpos++] = 1;
 	}
 
-	free(row);
 	c->bitssize = curpos - c->bitsoffset;
 	c->mem_used = c->bitsoffset + c->bitssize;
-	return 1;
+	retval = 1;
+
+done:
+	free(row);
+	free(run_lens);
+	return retval;
 }
 
 static int write_bits_fromfile(struct context *c, const char *fn)
@@ -1045,10 +1055,15 @@ static void set_calculated_fields(struct context *c)
 	c->bitsoffset = 14 + c->headersize + c->bitfieldssize + c->palettesize + c->extrabytessize;
 }
 
-static void defaultbmp(struct context *c)
+static void defaultbmp(struct global_context *glctx, struct context *c)
 {
-	memset(c->mem,0,BMP_MAX_SIZE);
+	memset(glctx->mem,0,BMP_MAX_SIZE);
+	memset(c, 0, sizeof(struct context));
+
+	// Copy ->mem pointer, so we don't need glctx from here on.
+	c->mem = glctx->mem;
 	c->mem_used = 0;
+
 #ifdef SMALL_IMAGES
 	c->w = 31;
 	c->h = 32;
@@ -1058,47 +1073,11 @@ static void defaultbmp(struct context *c)
 #endif
 	c->bpp = 8;
 	c->pal_entries = 252;
-	c->clr_used = 0;
 	c->headersize = 40;
-	c->bitssize = 0;
-	c->bitfieldssize = 0;
-	c->rowsize = 0;
 	c->filename = "noname.bmp";
 	c->compression = 0; // BI_RGB
 	c->xpelspermeter = 2835; // = about 72dpi
 	c->ypelspermeter = 2835;
-	c->pal_gs = 0;
-	c->pal_wb = 0;
-	c->pal_bg = 0;
-	c->pal_p1 = 0;
-	c->dither = 0;
-	c->topdown = 0;
-	c->embed_profile = 0;
-	c->link_profile = 0;
-	c->profile_offset = 0;
-	c->profile_size = 0;
-	c->alphahack32 = 0;
-	c->halfheight = 0;
-	c->zero_biSizeImage = 0;
-	c->bad_biSizeImage = 0;
-	c->bad_bfSize = 0;
-	c->bad_width = 0;
-	c->bad_reallybig = 0;
-	c->bad_bitcount = 0;
-	c->bad_planes = 0;
-	c->bad_palettesize = 0;
-	c->bad_rle = 0;
-	c->bad_rle_bis = 0;
-	c->bad_rle_ter = 0;
-	c->cut_rle = 0;
-	c->bad_eof = 0;
-	c->extrabytessize = 0;
-	c->palette_reserve = 0;
-	c->rletrns = 0;
-	c->bf_r = c->bf_g = c->bf_b = c->bf_a = 0;
-	c->nbits_r = c->nbits_g = c->nbits_b = c->nbits_a = 0;
-	c->bf_shift_r = c->bf_shift_g = c->bf_shift_b = c->bf_shift_a = 0;
-	c->cbsize_flag = 0;
 	set_calculated_fields(c);
 }
 
@@ -1111,7 +1090,7 @@ static int my_mkdir(const char *pathname)
 #endif
 }
 
-static int run(struct context *c)
+static int run(struct global_context *glctx, struct context *c)
 {
 	int retval = 0;
 
@@ -1119,25 +1098,25 @@ static int run(struct context *c)
 	my_mkdir("q");
 	my_mkdir("b");
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/pal8.bmp";
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/pal8gs.bmp";
 	c->pal_gs = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/pal8os2.bmp";
 	c->headersize = 12;
 	c->pal_entries = 256;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/pal8os2-sz.bmp";
 	c->headersize = 12;
 	c->pal_entries = 256;
@@ -1145,53 +1124,53 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/pal8os2sp.bmp";
 	c->headersize = 12;
 	c->pal_entries = 252;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/pal8os2v2-16.bmp";
 	c->headersize = 16;
 	c->pal_entries = 256;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/pal8os2v2.bmp";
 	c->headersize = 64;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/pal8os2v2-40sz.bmp";
 	c->headersize = 40;
 	c->cbsize_flag = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/pal8os2v2-sz.bmp";
 	c->headersize = 64;
 	c->cbsize_flag = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/pal8v4.bmp";
 	c->headersize = 108;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/pal8v5.bmp";
 	c->headersize = 124;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/pal8w124.bmp";
 #ifdef SMALL_IMAGES
 	c->w = 28; c->h = 29;
@@ -1201,7 +1180,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/pal8w125.bmp";
 #ifdef SMALL_IMAGES
 	c->w = 29; c->h = 30;
@@ -1211,7 +1190,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/pal8w126.bmp";
 #ifdef SMALL_IMAGES
 	c->w = 30; c->h = 31;
@@ -1221,7 +1200,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/pal8-0.bmp";
 	c->pal_entries = 256;
 	c->xpelspermeter = 0;
@@ -1231,38 +1210,38 @@ static int run(struct context *c)
 	c->clr_used = 0;
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/pal8offs.bmp";
 	c->extrabytessize = 100;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/pal8oversizepal.bmp";
 	c->pal_entries = 300;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/pal8badindex.bmp";
 	c->pal_entries = 101;
 	c->palette_reserve = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/badpalettesize.bmp";
 	c->bad_palettesize = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/pal8topdown.bmp";
 	c->topdown = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/pal8nonsquare.bmp";
 	c->halfheight = 1;
 	c->ypelspermeter = 1417;
@@ -1274,13 +1253,13 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/pal8rle.bmp";
 	c->compression = CMPR_RLE8;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/pal8rlecut.bmp";
 	c->compression = CMPR_RLE8;
 	c->rletrns = 1;
@@ -1290,7 +1269,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/badrle.bmp";
 	c->compression = CMPR_RLE8;
 	c->rletrns = 1;
@@ -1300,7 +1279,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/badrlebis.bmp";
 	c->compression = CMPR_RLE8;
 	c->rletrns = 1;
@@ -1310,7 +1289,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/badrleter.bmp";
 	c->compression = CMPR_RLE8;
 	c->rletrns = 1;
@@ -1321,7 +1300,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/badrle4.bmp";
 	c->bpp = 4;
 	c->compression = CMPR_RLE4;
@@ -1332,7 +1311,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/badrle4bis.bmp";
 	c->bpp = 4;
 	c->compression = CMPR_RLE4;
@@ -1343,7 +1322,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/badrle4ter.bmp";
 	c->bpp = 4;
 	c->compression = CMPR_RLE4;
@@ -1355,14 +1334,14 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/rletopdown.bmp";
 	c->topdown = 1;
 	c->compression = CMPR_RLE8;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/pal8rletrns.bmp";
 	c->compression = CMPR_RLE8;
 	c->rletrns = 1;
@@ -1371,14 +1350,14 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/pal4.bmp";
 	c->bpp = 4;
 	c->pal_entries = 12;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/pal4gs.bmp";
 	c->bpp = 4;
 	c->pal_entries = 12;
@@ -1386,7 +1365,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/pal4rle.bmp";
 	c->bpp = 4;
 	c->compression = CMPR_RLE4;
@@ -1394,7 +1373,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/pal4rlecut.bmp";
 	c->bpp = 4;
 	c->compression = CMPR_RLE4;
@@ -1405,7 +1384,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/pal4rletrns.bmp";
 	c->bpp = 4;
 	c->compression = CMPR_RLE4;
@@ -1415,14 +1394,14 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/pal1.bmp";
 	c->bpp = 1;
 	c->pal_entries = 2;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/pal1wb.bmp";
 	c->bpp = 1;
 	c->pal_entries = 2;
@@ -1430,7 +1409,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/pal1bg.bmp";
 	c->bpp = 1;
 	c->pal_entries = 2;
@@ -1438,7 +1417,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/pal1p1.bmp";
 	c->bpp = 1;
 	c->pal_entries = 1;
@@ -1446,7 +1425,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/badbitssize.bmp";
 	c->bpp = 1;
 	c->pal_entries = 2;
@@ -1454,7 +1433,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/badfilesize.bmp";
 	c->bpp = 1;
 	c->pal_entries = 2;
@@ -1462,7 +1441,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/shortfile.bmp";
 	c->bpp = 1;
 	c->pal_entries = 2;
@@ -1470,7 +1449,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/badwidth.bmp";
 	c->bpp = 1;
 	c->pal_entries = 2;
@@ -1478,7 +1457,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/reallybig.bmp";
 	c->bpp = 24;
 	c->pal_entries = 0;
@@ -1488,7 +1467,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/badbitcount.bmp";
 	c->bpp = 1;
 	c->pal_entries = 2;
@@ -1496,7 +1475,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/badplanes.bmp";
 	c->bpp = 1;
 	c->pal_entries = 2;
@@ -1504,7 +1483,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/badheadersize.bmp";
 	c->bpp = 1;
 	c->pal_entries = 2;
@@ -1512,7 +1491,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/baddens1.bmp";
 	c->bpp = 1;
 	c->pal_entries = 2;
@@ -1521,7 +1500,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/baddens2.bmp";
 	c->bpp = 1;
 	c->pal_entries = 2;
@@ -1530,7 +1509,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/pal2.bmp";
 	c->bpp = 2;
 	c->pal_entries = 4;
@@ -1538,14 +1517,14 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/pal2color.bmp";
 	c->bpp = 2;
 	c->pal_entries = 4;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/rgb16.bmp";
 	c->bpp = 16;
 	c->nbits_r = c->nbits_g = c->nbits_b = 5;
@@ -1556,7 +1535,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/rgb16-565.bmp";
 	c->bpp = 16;
 	c->pal_entries = 0;
@@ -1568,7 +1547,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "b/rgb16-880.bmp";
 	c->bpp = 16;
 	c->pal_entries = 0;
@@ -1580,7 +1559,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/rgb16-565pal.bmp";
 	c->bpp = 16;
 	c->pal_entries = 256;
@@ -1592,7 +1571,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgba16-4444.bmp";
 	c->headersize = 124;
 	c->bpp = 16;
@@ -1605,7 +1584,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgba16-5551.bmp";
 	c->headersize = 124;
 	c->bpp = 16;
@@ -1618,7 +1597,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgba16-1924.bmp";
 	c->headersize = 124;
 	c->bpp = 16;
@@ -1632,7 +1611,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgb16-231.bmp";
 	c->bpp = 16;
 	c->pal_entries = 0;
@@ -1645,7 +1624,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgb16-3103.bmp";
 	c->bpp = 16;
 	c->pal_entries = 0;
@@ -1658,14 +1637,14 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/rgb24.bmp";
 	c->bpp = 24;
 	c->pal_entries = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgb24prof.bmp";
 	c->headersize = 124;
 	c->bpp = 24;
@@ -1674,7 +1653,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgb24lprof.bmp";
 	c->headersize = 124;
 	c->bpp = 24;
@@ -1683,21 +1662,21 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/rgb24pal.bmp";
 	c->bpp = 24;
 	c->pal_entries = 256;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgb24largepal.bmp";
 	c->bpp = 24;
 	c->pal_entries = 300;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/rgb32.bmp";
 	c->bpp = 32;
 	c->pal_entries = 0;
@@ -1707,7 +1686,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "g/rgb32bf.bmp";
 	c->bpp = 32;
 	c->compression = BI_BITFIELDS;
@@ -1719,7 +1698,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgb32fakealpha.bmp";
 	c->bpp = 32;
 	c->pal_entries = 0;
@@ -1731,7 +1710,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgb32-111110.bmp";
 	c->bpp = 32;
 	c->compression = BI_BITFIELDS;
@@ -1743,7 +1722,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgb32-7187.bmp";
 	c->bpp = 32;
 	c->compression = BI_BITFIELDS;
@@ -1755,7 +1734,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgba32.bmp";
 	c->headersize = 124;
 	c->bpp = 32;
@@ -1768,7 +1747,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgba32-1010102.bmp";
 	c->headersize = 124;
 	c->bpp = 32;
@@ -1781,7 +1760,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgba32-81284.bmp";
 	c->headersize = 124;
 	c->bpp = 32;
@@ -1794,7 +1773,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgba32-61754.bmp";
 	c->headersize = 124;
 	c->bpp = 32;
@@ -1807,7 +1786,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgb32h52.bmp";
 	c->headersize = 52;
 	c->bpp = 32;
@@ -1819,7 +1798,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgba32h56.bmp";
 	c->headersize = 56;
 	c->bpp = 32;
@@ -1832,7 +1811,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgba32abf.bmp";
 	c->bpp = 32;
 	c->compression = BI_ALPHABITFIELDS;
@@ -1845,7 +1824,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgb24jpeg.bmp";
 	c->headersize = 124;
 	c->bpp = 0;
@@ -1854,7 +1833,7 @@ static int run(struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
-	defaultbmp(c);
+	defaultbmp(glctx, c);
 	c->filename = "q/rgb24png.bmp";
 	c->headersize = 124;
 	c->bpp = 0;
@@ -1870,12 +1849,16 @@ done:
 
 int main(int argc, char **argv)
 {
+	struct global_context glctx;
 	struct context c;
-	int ret;
+	int ret = 0;
 
-	memset(&c,0,sizeof(struct context));
-	c.mem = malloc(BMP_MAX_SIZE);
-	ret = run(&c);
+	glctx.mem = malloc(BMP_MAX_SIZE);
+	if(!glctx.mem) goto done;
 
+	ret = run(&glctx, &c);
+
+done:
+	free(glctx.mem);
 	return ret ? 0 : 1;
 }
