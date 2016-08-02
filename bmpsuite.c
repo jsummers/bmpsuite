@@ -495,11 +495,11 @@ static int write_bits_rle(struct context *c)
 {
 	size_t curpos; // where in c->mem to write to next
 	size_t rowpos;
-	size_t pixels_per_row;
+	int pixels_per_row;
 	unsigned char *row;
 	int *run_lens;
-	size_t i,j;
-	size_t j_logical;
+	int i,j;
+	int j_logical;
 	int k;
 	int tmp1, tmp2, tmp3;
 	double r,g,b,a;
@@ -544,7 +544,7 @@ static int write_bits_rle(struct context *c)
 
 		rowpos = 0; // index into row[]
 
-		while(rowpos < pixels_per_row) {
+		while((int)rowpos < pixels_per_row) {
 
 			if(c->rletrns && row[rowpos]==0) { // transparent pixel
 				c->mem[curpos++] = 0;
@@ -554,7 +554,7 @@ static int write_bits_rle(struct context *c)
 				rowpos += run_lens[rowpos];
 				continue;
 			}
-			if (c->cut_rle && (rowpos > (pixels_per_row/2))) {
+			if (c->cut_rle && ((int)rowpos > (pixels_per_row/2))) {
 				if ((j & 3) == 0) {
 					break;
 				}
@@ -598,7 +598,7 @@ static int write_bits_rle(struct context *c)
 				}
 			}
 
-			if(rowpos>=pixels_per_row) break;
+			if((int)rowpos >= pixels_per_row) break;
 
 			if(c->rletrns && row[rowpos]==0) break;
 

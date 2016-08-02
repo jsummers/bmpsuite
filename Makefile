@@ -1,6 +1,6 @@
 
 CC:=gcc
-CFLAGS:=-Wall -g
+CFLAGS:=-g -Wall -Wextra -Wmissing-prototypes -Wformat-security -Wno-unused-parameter
 LDFLAGS:=-lm
 
 all: stamp
