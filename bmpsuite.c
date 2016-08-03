@@ -64,6 +64,15 @@ static const char *bmpovl[] = {
  "11111111111111111111.......111111............111111...111111.................."
 };
 
+#define I_R 0
+#define I_G 1
+#define I_B 2
+#define I_A 3
+
+struct color_f {
+	double s[4]; // [0]=r, [1]=g, [2]=b, [3]=a
+};
+
 struct global_context {
 	unsigned char *mem;
 };
@@ -170,7 +179,7 @@ static double srgb_to_linear(double v_srgb)
 }
 
 static void get_pixel_color(struct context *c, int x1, int y1,
-	double *pr, double *pg, double *pb, double *pa)
+	struct color_f *clr)
 {
 	unsigned char t;
 	int x, y;
@@ -188,55 +197,58 @@ static void get_pixel_color(struct context *c, int x1, int y1,
 	{
 		t = bmpovl[y-bmpovl_ypos][x-bmpovl_xpos];
 		if(t=='1') {
-			*pr = 0.0; *pg = 0.0; *pb = 0.0; *pa = 1.0;
-			return;
+			clr->s[I_R] = 0.0; clr->s[I_G] = 0.0; clr->s[I_B] = 0.0; clr->s[I_A] = 1.0;
+			goto done;
 		}
 		else if(t=='2') {
 			if(c->bf_a) {
 				// Make the inside of the overlay transparent, if possible.
 				if( (y-bmpovl_ypos)<(bmpovl_height/2) ) {
 					// Make the top half complete transparent ("transparent green").
-					*pr = 0.0; *pg = 1.0; *pb = 0.0; *pa = 0.0;
+					clr->s[I_R] = 0.0;  clr->s[I_G] = 1.0; clr->s[I_B] = 0.0; clr->s[I_A] = 0.0;
 				}
 				else {
 					// Make the bottom half a red gradient from transparent to opaque.
-					*pr = 1.0; *pg = 0.0; *pb = 0.0;
-					*pa = 2*((double)(y-bmpovl_ypos)) /(bmpovl_height) -1.0;
+					clr->s[I_R] = 1.0; clr->s[I_G] = 0.0; clr->s[I_B] = 0.0;
+					clr->s[I_A] = 2*((double)(y-bmpovl_ypos)) /(bmpovl_height) -1.0;
 				}
 			}
 			else if(c->rletrns) {
-				*pr = 1.0; *pg = 1.0; *pb = 1.0; *pa = 0.0;
+				clr->s[I_R] = 1.0; clr->s[I_G] = 1.0; clr->s[I_B] = 1.0; clr->s[I_A] = 0.0;
 			}
 			else {
-				*pr = 1.0; *pg = 1.0; *pb = 1.0; *pa = 1.0;
+				clr->s[I_R] = 1.0; clr->s[I_G] = 1.0; clr->s[I_B] = 1.0; clr->s[I_A] = 1.0;
 			}
-			return;
+			goto done;
 		}
 	}
 
-	*pa = 1.0;
+	clr->s[I_A] = 1.0;
 
 	// Standard truecolor image
 	if(x<32) {
-		*pr = ((double)(63-y))/63.0;
-		*pg = ((double)(x%32))/31.0;
-		*pb = ((double)(x%32))/31.0;
+		clr->s[I_R] = ((double)(63-y))/63.0;
+		clr->s[I_G] = ((double)(x%32))/31.0;
+		clr->s[I_B] = ((double)(x%32))/31.0;
 	}
 	else if(x<64) {
-		*pr = ((double)(x%32))/31.0;
-		*pg = ((double)(63-y))/63.0;
-		*pb = ((double)(x%32))/31.0;
+		clr->s[I_R] = ((double)(x%32))/31.0;
+		clr->s[I_G] = ((double)(63-y))/63.0;
+		clr->s[I_B] = ((double)(x%32))/31.0;
 	}
 	else if(x<96) {
-		*pr = ((double)(x%32))/31.0;
-		*pg = ((double)(x%32))/31.0;
-		*pb = ((double)(63-y))/63.0;
+		clr->s[I_R] = ((double)(x%32))/31.0;
+		clr->s[I_G] = ((double)(x%32))/31.0;
+		clr->s[I_B] = ((double)(63-y))/63.0;
 	}
 	else {
-		*pr = ((double)(159-y))/255.0;
-		*pg = ((double)(159-y))/255.0;
-		*pb = ((double)(159-y + x%32))/255.0;
+		clr->s[I_R] = ((double)(159-y))/255.0;
+		clr->s[I_G] = ((double)(159-y))/255.0;
+		clr->s[I_B] = ((double)(159-y + x%32))/255.0;
 	}
+
+done:
+	if(c->alphahack32) clr->s[I_A] = 1.0 - ((double)y)/(c->h-1);
 }
 
 static int ordered_dither_lowlevel(double fraction, int x, int y)
@@ -303,7 +315,7 @@ static int quantize(double v_to_1, int numcc, int x, int y,
 }
 
 static void set_pixel(struct context *c, int x, int y,
-  double r, double g, double b, double a)
+  const struct color_f *clr)
 {
 	unsigned int r2, g2, b2, a2;
 	int tmp1, tmp2, tmp3;
@@ -320,11 +332,10 @@ static void set_pixel(struct context *c, int x, int y,
 
 	if(c->bpp==32) {
 		offs = row_offs + 4*x;
-		r2 = quantize(r, 1<<c->nbits_r, x, y, 0, 0, 0);
-		g2 = quantize(g, 1<<c->nbits_g, x, y, 0, 0, 0);
-		b2 = quantize(b, 1<<c->nbits_b, x, y, 0, 0, 0);
-		if(c->alphahack32) a = 1.0 - ((double)y)/63.0;
-		if(c->bf_a || c->alphahack32) a2 = quantize(a, 1<<c->nbits_a, x, y, 0, 0, 0);
+		r2 = quantize(clr->s[I_R], 1<<c->nbits_r, x, y, 0, 0, 0);
+		g2 = quantize(clr->s[I_G], 1<<c->nbits_g, x, y, 0, 0, 0);
+		b2 = quantize(clr->s[I_B], 1<<c->nbits_b, x, y, 0, 0, 0);
+		if(c->bf_a || c->alphahack32) a2 = quantize(clr->s[I_A], 1<<c->nbits_a, x, y, 0, 0, 0);
 		else a2 = 0;
 		u = (r2<<c->bf_shift_r) | (g2<<c->bf_shift_g) | (b2<<c->bf_shift_b);
 		if(c->bf_a) u |= a2<<c->bf_shift_a;
@@ -336,9 +347,9 @@ static void set_pixel(struct context *c, int x, int y,
 	}
 	else if(c->bpp==24) {
 		offs = row_offs + 3*x;
-		r2 = quantize(r, 256, x, y, 0, 0, 0);
-		g2 = quantize(g, 256, x, y, 0, 0, 0);
-		b2 = quantize(b, 256, x, y, 0, 0, 0);
+		r2 = quantize(clr->s[I_R], 256, x, y, 0, 0, 0);
+		g2 = quantize(clr->s[I_G], 256, x, y, 0, 0, 0);
+		b2 = quantize(clr->s[I_B], 256, x, y, 0, 0, 0);
 		c->mem[c->bitsoffset+offs+0] = (unsigned char)b2;
 		c->mem[c->bitsoffset+offs+1] = (unsigned char)g2;
 		c->mem[c->bitsoffset+offs+2] = (unsigned char)r2;
@@ -346,16 +357,16 @@ static void set_pixel(struct context *c, int x, int y,
 	else if(c->bpp==16) {
 		offs = row_offs + 2*x;
 		if(c->dither) {
-			r2 = quantize(r, 1<<c->nbits_r, x, y, 1, 1, 1);
-			g2 = quantize(g, 1<<c->nbits_g, x, y, 1, 1, 1);
-			b2 = quantize(b, 1<<c->nbits_b, x, y, 1, 1, 1);
+			r2 = quantize(clr->s[I_R], 1<<c->nbits_r, x, y, 1, 1, 1);
+			g2 = quantize(clr->s[I_G], 1<<c->nbits_g, x, y, 1, 1, 1);
+			b2 = quantize(clr->s[I_B], 1<<c->nbits_b, x, y, 1, 1, 1);
 		}
 		else {
-			r2 = quantize(r, 1<<c->nbits_r, x, y, 0, 0, 0);
-			g2 = quantize(g, 1<<c->nbits_g, x, y, 0, 0, 0);
-			b2 = quantize(b, 1<<c->nbits_b, x, y, 0, 0, 0);
+			r2 = quantize(clr->s[I_R], 1<<c->nbits_r, x, y, 0, 0, 0);
+			g2 = quantize(clr->s[I_G], 1<<c->nbits_g, x, y, 0, 0, 0);
+			b2 = quantize(clr->s[I_B], 1<<c->nbits_b, x, y, 0, 0, 0);
 		}
-		if(c->bf_a) a2 = quantize(a, 1<<c->nbits_a, x, y, 0, 0, 0);
+		if(c->bf_a) a2 = quantize(clr->s[I_A], 1<<c->nbits_a, x, y, 0, 0, 0);
 
 		u = (r2<<c->bf_shift_r) | (g2<<c->bf_shift_g) | (b2<<c->bf_shift_b);
 		if(c->bf_a) u |= a2<<c->bf_shift_a;
@@ -369,9 +380,9 @@ static void set_pixel(struct context *c, int x, int y,
 			double current = 0.0;
 			int entries = c->pal_entries - c->palette_reserve - 1;
 
-			tmpd = srgb_to_linear(r)*0.212655
-			 + srgb_to_linear(g)*0.715158
-			 + srgb_to_linear(b)*0.072187;
+			tmpd = srgb_to_linear(clr->s[I_R])*0.212655
+			 + srgb_to_linear(clr->s[I_G])*0.715158
+			 + srgb_to_linear(clr->s[I_B])*0.072187;
 
 			p = 1;
 			current = srgb_to_linear(p / (double)entries);
@@ -388,9 +399,9 @@ static void set_pixel(struct context *c, int x, int y,
 			}
 		}
 		else {
-			tmp1 = quantize(r, 6, x, y, 1, 1, 1);
-			tmp2 = quantize(g, 7, x, y, 1, 1, 1);
-			tmp3 = quantize(b, 6, x, y, 1, 1, 1);
+			tmp1 = quantize(clr->s[I_R], 6, x, y, 1, 1, 1);
+			tmp2 = quantize(clr->s[I_G], 7, x, y, 1, 1, 1);
+			tmp3 = quantize(clr->s[I_B], 6, x, y, 1, 1, 1);
 			p = tmp1 + tmp2*6 + tmp3*42;
 			if(c->palette_reserve) {
 				if(p<255) p++;
@@ -405,9 +416,9 @@ static void set_pixel(struct context *c, int x, int y,
 			double current = 0.0;
 			int entries = c->pal_entries - c->palette_reserve - 1;
 
-			tmpd = srgb_to_linear(r)*0.212655
-			 + srgb_to_linear(g)*0.715158
-			 + srgb_to_linear(b)*0.072187;
+			tmpd = srgb_to_linear(clr->s[I_R])*0.212655
+			 + srgb_to_linear(clr->s[I_G])*0.715158
+			 + srgb_to_linear(clr->s[I_B])*0.072187;
 
 			p = 1;
 			current = srgb_to_linear(p / (double)entries);
@@ -424,9 +435,9 @@ static void set_pixel(struct context *c, int x, int y,
 			}
 		}
 		else {
-			tmp1 = quantize(r, 2, x, y, 1, 1, 1);
-			tmp2 = quantize(g, 3, x, y, 1, 1, 1);
-			tmp3 = quantize(b, 2, x, y, 1, 1, 1);
+			tmp1 = quantize(clr->s[I_R], 2, x, y, 1, 1, 1);
+			tmp2 = quantize(clr->s[I_G], 3, x, y, 1, 1, 1);
+			tmp3 = quantize(clr->s[I_B], 2, x, y, 1, 1, 1);
 			p = tmp1 + tmp2*2 + tmp3*6;
 		}
 		if(x%2)
@@ -438,9 +449,9 @@ static void set_pixel(struct context *c, int x, int y,
 		const double gray1 = 0.0908417111646935; // = srgb_to_linear(1/3)
 		const double gray2 = 0.4019777798321956; // = srgb_to_linear(2/3)
 		offs = row_offs + x/4;
-		tmpd = srgb_to_linear(r)*0.212655
-			 + srgb_to_linear(g)*0.715158
-			 + srgb_to_linear(b)*0.072187;
+		tmpd = srgb_to_linear(clr->s[I_R])*0.212655
+			 + srgb_to_linear(clr->s[I_G])*0.715158
+			 + srgb_to_linear(clr->s[I_B])*0.072187;
 
 		if(tmpd<gray1) {
 			tmp1 = ordered_dither_lowlevel(tmpd/gray1,x,y) ? 1 : 0;
@@ -455,9 +466,9 @@ static void set_pixel(struct context *c, int x, int y,
 	}
 	else if(c->bpp==1) {
 		offs = row_offs + x/8;
-		tmpd = srgb_to_linear(r)*0.212655
-			 + srgb_to_linear(g)*0.715158
-			 + srgb_to_linear(b)*0.072187;
+		tmpd = srgb_to_linear(clr->s[I_R])*0.212655
+			 + srgb_to_linear(clr->s[I_G])*0.715158
+			 + srgb_to_linear(clr->s[I_B])*0.072187;
 		tmp1 = ordered_dither_lowlevel(tmpd,x,y);
 		if(c->pal_wb) tmp1 = 1-tmp1; // Palette starts with white, so invert the colors.
 		if(c->pal_p1) tmp1 = 0;
@@ -514,7 +525,7 @@ static int write_bits_rle(struct context *c)
 	int j_logical;
 	int k;
 	int tmp1, tmp2, tmp3;
-	double r,g,b,a;
+	struct color_f clr;
 	int unc_len;
 	int unc_len_padded;
 	int thresh;
@@ -533,21 +544,21 @@ static int write_bits_rle(struct context *c)
 
 		// Temporarily store the palette indices in row[]
 		for(i=0;i<c->w;i++) {
-			get_pixel_color(c,i,j_logical, &r,&g,&b,&a);
+			get_pixel_color(c,i,j_logical, &clr);
 
 			if(c->compression==CMPR_RLE4) {
-				tmp1 = quantize(r,2,i,j_logical,1,1,1);
-				tmp2 = quantize(g,3,i,j_logical,1,1,1);
-				tmp3 = quantize(b,2,i,j_logical,1,1,1);
+				tmp1 = quantize(clr.s[I_R],2,i,j_logical,1,1,1);
+				tmp2 = quantize(clr.s[I_G],3,i,j_logical,1,1,1);
+				tmp3 = quantize(clr.s[I_B],2,i,j_logical,1,1,1);
 				row[i] = c->palette_reserve + tmp1 + tmp2*2 + tmp3*6;
 			}
 			else {
-				tmp1 = quantize(r,6,i,j_logical,1,1,1);
-				tmp2 = quantize(g,7,i,j_logical,1,1,1);
-				tmp3 = quantize(b,6,i,j_logical,1,1,1);
+				tmp1 = quantize(clr.s[I_R],6,i,j_logical,1,1,1);
+				tmp2 = quantize(clr.s[I_G],7,i,j_logical,1,1,1);
+				tmp3 = quantize(clr.s[I_B],6,i,j_logical,1,1,1);
 				row[i] = c->palette_reserve + tmp1 + tmp2*6 + tmp3*42;
 			}
-			if(c->rletrns && a<0.5) {
+			if(c->rletrns && clr.s[I_A]<0.5) {
 				row[i] = 0;
 			}
 		}
@@ -670,7 +681,7 @@ done:
 static int write_bits(struct context *c)
 {
 	int i,j;
-	double r, g, b, a;
+	struct color_f clr;
 
 	c->rowsize = (((c->w * c->bpp)+31)/32)*4;
 	c->bitssize = c->rowsize*c->h;
@@ -679,8 +690,8 @@ static int write_bits(struct context *c)
 
 	for(j=0;j<c->h;j++) {
 		for(i=0;i<c->w;i++) {
-			get_pixel_color(c,i,c->halfheight ? j*2 : j, &r,&g,&b,&a);
-			set_pixel(c,i,j,r,g,b,a);
+			get_pixel_color(c, i, c->halfheight ? j*2 : j, &clr);
+			set_pixel(c, i, j, &clr);
 		}
 	}
 	return 1;
