@@ -272,6 +272,10 @@ static int quantize(double v_to_1, int numcc, int x, int y,
 	double fraction;
 	int maxcc = numcc-1;
 
+	if(!dither && !from_srgb && !to_srgb) {
+		return scale_to_int(v_to_1, numcc);
+	}
+
 	v_to_maxcc = v_to_1*maxcc;
 	floor_to_maxcc = floor(v_to_maxcc);
 	if(floor_to_maxcc>=(double)maxcc) return maxcc;
@@ -316,11 +320,11 @@ static void set_pixel(struct context *c, int x, int y,
 
 	if(c->bpp==32) {
 		offs = row_offs + 4*x;
-		r2 = scale_to_int(r,(1<<c->nbits_r));
-		g2 = scale_to_int(g,(1<<c->nbits_g));
-		b2 = scale_to_int(b,(1<<c->nbits_b));
+		r2 = quantize(r, 1<<c->nbits_r, x, y, 0, 0, 0);
+		g2 = quantize(g, 1<<c->nbits_g, x, y, 0, 0, 0);
+		b2 = quantize(b, 1<<c->nbits_b, x, y, 0, 0, 0);
 		if(c->alphahack32) a = 1.0 - ((double)y)/63.0;
-		if(c->bf_a || c->alphahack32) a2 = scale_to_int(a,(1<<c->nbits_a));
+		if(c->bf_a || c->alphahack32) a2 = quantize(a, 1<<c->nbits_a, x, y, 0, 0, 0);
 		else a2 = 0;
 		u = (r2<<c->bf_shift_r) | (g2<<c->bf_shift_g) | (b2<<c->bf_shift_b);
 		if(c->bf_a) u |= a2<<c->bf_shift_a;
@@ -332,26 +336,26 @@ static void set_pixel(struct context *c, int x, int y,
 	}
 	else if(c->bpp==24) {
 		offs = row_offs + 3*x;
-		r2 = (unsigned char)scale_to_int(r,256);
-		g2 = (unsigned char)scale_to_int(g,256);
-		b2 = (unsigned char)scale_to_int(b,256);
-		c->mem[c->bitsoffset+offs+0] = b2;
-		c->mem[c->bitsoffset+offs+1] = g2;
-		c->mem[c->bitsoffset+offs+2] = r2;
+		r2 = quantize(r, 256, x, y, 0, 0, 0);
+		g2 = quantize(g, 256, x, y, 0, 0, 0);
+		b2 = quantize(b, 256, x, y, 0, 0, 0);
+		c->mem[c->bitsoffset+offs+0] = (unsigned char)b2;
+		c->mem[c->bitsoffset+offs+1] = (unsigned char)g2;
+		c->mem[c->bitsoffset+offs+2] = (unsigned char)r2;
 	}
 	else if(c->bpp==16) {
 		offs = row_offs + 2*x;
 		if(c->dither) {
-			r2 = quantize(r,(1<<c->nbits_r),x,y,1,1,1);
-			g2 = quantize(g,(1<<c->nbits_g),x,y,1,1,1);
-			b2 = quantize(b,(1<<c->nbits_b),x,y,1,1,1);
+			r2 = quantize(r, 1<<c->nbits_r, x, y, 1, 1, 1);
+			g2 = quantize(g, 1<<c->nbits_g, x, y, 1, 1, 1);
+			b2 = quantize(b, 1<<c->nbits_b, x, y, 1, 1, 1);
 		}
 		else {
-			r2 = scale_to_int(r,(1<<c->nbits_r));
-			g2 = scale_to_int(g,(1<<c->nbits_g));
-			b2 = scale_to_int(b,(1<<c->nbits_b));
+			r2 = quantize(r, 1<<c->nbits_r, x, y, 0, 0, 0);
+			g2 = quantize(g, 1<<c->nbits_g, x, y, 0, 0, 0);
+			b2 = quantize(b, 1<<c->nbits_b, x, y, 0, 0, 0);
 		}
-		if(c->bf_a) a2 = scale_to_int(a,(1<<c->nbits_a));
+		if(c->bf_a) a2 = quantize(a, 1<<c->nbits_a, x, y, 0, 0, 0);
 
 		u = (r2<<c->bf_shift_r) | (g2<<c->bf_shift_g) | (b2<<c->bf_shift_b);
 		if(c->bf_a) u |= a2<<c->bf_shift_a;
@@ -384,9 +388,9 @@ static void set_pixel(struct context *c, int x, int y,
 			}
 		}
 		else {
-			tmp1 = quantize(r,6,x,y,1,1,1);
-			tmp2 = quantize(g,7,x,y,1,1,1);
-			tmp3 = quantize(b,6,x,y,1,1,1);
+			tmp1 = quantize(r, 6, x, y, 1, 1, 1);
+			tmp2 = quantize(g, 7, x, y, 1, 1, 1);
+			tmp3 = quantize(b, 6, x, y, 1, 1, 1);
 			p = tmp1 + tmp2*6 + tmp3*42;
 			if(c->palette_reserve) {
 				if(p<255) p++;
@@ -420,9 +424,9 @@ static void set_pixel(struct context *c, int x, int y,
 			}
 		}
 		else {
-			tmp1 = quantize(r,2,x,y,1,1,1);
-			tmp2 = quantize(g,3,x,y,1,1,1);
-			tmp3 = quantize(b,2,x,y,1,1,1);
+			tmp1 = quantize(r, 2, x, y, 1, 1, 1);
+			tmp2 = quantize(g, 3, x, y, 1, 1, 1);
+			tmp3 = quantize(b, 2, x, y, 1, 1, 1);
 			p = tmp1 + tmp2*2 + tmp3*6;
 		}
 		if(x%2)
@@ -751,9 +755,9 @@ static void write_palette(struct context *c)
 				ii = i-c->palette_reserve;
 				if(i>=252+c->palette_reserve) continue;
 
-				c->mem[offs+bppe*i+2] = scale_to_int(ii/(double)(c->pal_entries - c->palette_reserve - 1), 256);
-				c->mem[offs+bppe*i+1] = scale_to_int(ii/(double)(c->pal_entries - c->palette_reserve - 1), 256);
-				c->mem[offs+bppe*i+0] = scale_to_int(ii/(double)(c->pal_entries - c->palette_reserve - 1), 256);
+				c->mem[offs+bppe*i+2] = quantize(ii/(double)(c->pal_entries - c->palette_reserve - 1), 256, 0, 0, 0, 0, 0);
+				c->mem[offs+bppe*i+1] = quantize(ii/(double)(c->pal_entries - c->palette_reserve - 1), 256, 0, 0, 0, 0, 0);
+				c->mem[offs+bppe*i+0] = quantize(ii/(double)(c->pal_entries - c->palette_reserve - 1), 256, 0, 0, 0, 0, 0);
 			}
 		}
 		else {
@@ -765,9 +769,9 @@ static void write_palette(struct context *c)
 				r = ii%6;
 				g = (ii%42)/6;
 				b = ii/42;
-				c->mem[offs+bppe*i+2] = scale_to_int( ((double)r)/5.0, 256);
-				c->mem[offs+bppe*i+1] = scale_to_int( ((double)g)/6.0, 256);
-				c->mem[offs+bppe*i+0] = scale_to_int( ((double)b)/5.0, 256);
+				c->mem[offs+bppe*i+2] = quantize(((double)r)/5.0, 256, 0, 0, 0, 0, 0);
+				c->mem[offs+bppe*i+1] = quantize(((double)g)/6.0, 256, 0, 0, 0, 0, 0);
+				c->mem[offs+bppe*i+0] = quantize(((double)b)/5.0, 256, 0, 0, 0, 0, 0);
 			}
 		}
 	}
@@ -782,9 +786,9 @@ static void write_palette(struct context *c)
 			// Grayscale palette
 			for(i=c->palette_reserve;i<c->pal_entries;i++) {
 				ii = i-c->palette_reserve;
-				c->mem[offs+bppe*i+2] = scale_to_int(ii/(double)(c->pal_entries - c->palette_reserve - 1), 256);
-				c->mem[offs+bppe*i+1] = scale_to_int(ii/(double)(c->pal_entries - c->palette_reserve - 1), 256);
-				c->mem[offs+bppe*i+0] = scale_to_int(ii/(double)(c->pal_entries - c->palette_reserve - 1), 256);
+				c->mem[offs+bppe*i+2] = quantize(ii/(double)(c->pal_entries - c->palette_reserve - 1), 256, 0, 0, 0, 0, 0);
+				c->mem[offs+bppe*i+1] = quantize(ii/(double)(c->pal_entries - c->palette_reserve - 1), 256, 0, 0, 0, 0, 0);
+				c->mem[offs+bppe*i+0] = quantize(ii/(double)(c->pal_entries - c->palette_reserve - 1), 256, 0, 0, 0, 0, 0);
 			}
 		}
 		else {
@@ -793,9 +797,9 @@ static void write_palette(struct context *c)
 				r = ii%2;
 				g = (ii%6)/2;
 				b = ii/6;
-				c->mem[offs+4*i+2] = scale_to_int( ((double)r)/1.0, 256);
-				c->mem[offs+4*i+1] = scale_to_int( ((double)g)/2.0, 256);
-				c->mem[offs+4*i+0] = scale_to_int( ((double)b)/1.0, 256);
+				c->mem[offs+4*i+2] = quantize(((double)r)/1.0, 256, 0, 0, 0, 0, 0);
+				c->mem[offs+4*i+1] = quantize(((double)g)/2.0, 256, 0, 0, 0, 0, 0);
+				c->mem[offs+4*i+0] = quantize(((double)b)/1.0, 256, 0, 0, 0, 0, 0);
 			}
 		}
 	}
@@ -813,9 +817,9 @@ static void write_palette(struct context *c)
 				r = i%2;
 				g = (i == 3) ? 1 : 0;
 				b = i/2;
-				c->mem[offs+4*i+2] = scale_to_int( ((double)r)/1.0, 256);
-				c->mem[offs+4*i+1] = scale_to_int( ((double)g)/1.0, 256);
-				c->mem[offs+4*i+0] = scale_to_int( ((double)b)/1.0, 256);
+				c->mem[offs+4*i+2] = quantize(((double)r)/1.0, 256, 0, 0, 0, 0, 0);
+				c->mem[offs+4*i+1] = quantize(((double)g)/1.0, 256, 0, 0, 0, 0, 0);
+				c->mem[offs+4*i+0] = quantize(((double)b)/1.0, 256, 0, 0, 0, 0, 0);
 			}
 		}
 	}
