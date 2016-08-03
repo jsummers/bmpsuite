@@ -108,9 +108,9 @@ struct context {
 	int pal_wb; // 2-color, palette[0] = white
 	int pal_bg; // 2-color, blue & green
 	int pal_p1; // 1-color
-	unsigned int bf_r, bf_g, bf_b, bf_a; // used if compression==3
-	unsigned int nbits_r, nbits_g, nbits_b, nbits_a;
-	unsigned int bf_shift_r, bf_shift_g, bf_shift_b, bf_shift_a;
+	unsigned int bf[4]; // bitfields for R, G, B, A. Used if compression==3
+	unsigned int nbits[4];
+	unsigned int bf_shift[4];
 	int dither;
 	int topdown;
 	int embed_profile;
@@ -201,7 +201,7 @@ static void get_pixel_color(struct context *c, int x1, int y1,
 			goto done;
 		}
 		else if(t=='2') {
-			if(c->bf_a) {
+			if(c->bf[I_A]) {
 				// Make the inside of the overlay transparent, if possible.
 				if( (y-bmpovl_ypos)<(bmpovl_height/2) ) {
 					// Make the top half complete transparent ("transparent green").
@@ -332,13 +332,13 @@ static void set_pixel(struct context *c, int x, int y,
 
 	if(c->bpp==32) {
 		offs = row_offs + 4*x;
-		r2 = quantize(clr->s[I_R], 1<<c->nbits_r, x, y, 0, 0, 0);
-		g2 = quantize(clr->s[I_G], 1<<c->nbits_g, x, y, 0, 0, 0);
-		b2 = quantize(clr->s[I_B], 1<<c->nbits_b, x, y, 0, 0, 0);
-		if(c->bf_a || c->alphahack32) a2 = quantize(clr->s[I_A], 1<<c->nbits_a, x, y, 0, 0, 0);
+		r2 = quantize(clr->s[I_R], 1<<c->nbits[I_R], x, y, 0, 0, 0);
+		g2 = quantize(clr->s[I_G], 1<<c->nbits[I_G], x, y, 0, 0, 0);
+		b2 = quantize(clr->s[I_B], 1<<c->nbits[I_B], x, y, 0, 0, 0);
+		if(c->bf[I_A] || c->alphahack32) a2 = quantize(clr->s[I_A], 1<<c->nbits[I_A], x, y, 0, 0, 0);
 		else a2 = 0;
-		u = (r2<<c->bf_shift_r) | (g2<<c->bf_shift_g) | (b2<<c->bf_shift_b);
-		if(c->bf_a) u |= a2<<c->bf_shift_a;
+		u = (r2<<c->bf_shift[I_R]) | (g2<<c->bf_shift[I_G]) | (b2<<c->bf_shift[I_B]);
+		if(c->bf[I_A]) u |= a2<<c->bf_shift[I_A];
 		else if(c->alphahack32) u |= a2<<24;
 		c->mem[c->bitsoffset+offs+0] = (unsigned char)(u&0xff);
 		c->mem[c->bitsoffset+offs+1] = (unsigned char)((u>>8)&0xff);
@@ -357,19 +357,19 @@ static void set_pixel(struct context *c, int x, int y,
 	else if(c->bpp==16) {
 		offs = row_offs + 2*x;
 		if(c->dither) {
-			r2 = quantize(clr->s[I_R], 1<<c->nbits_r, x, y, 1, 1, 1);
-			g2 = quantize(clr->s[I_G], 1<<c->nbits_g, x, y, 1, 1, 1);
-			b2 = quantize(clr->s[I_B], 1<<c->nbits_b, x, y, 1, 1, 1);
+			r2 = quantize(clr->s[I_R], 1<<c->nbits[I_R], x, y, 1, 1, 1);
+			g2 = quantize(clr->s[I_G], 1<<c->nbits[I_G], x, y, 1, 1, 1);
+			b2 = quantize(clr->s[I_B], 1<<c->nbits[I_B], x, y, 1, 1, 1);
 		}
 		else {
-			r2 = quantize(clr->s[I_R], 1<<c->nbits_r, x, y, 0, 0, 0);
-			g2 = quantize(clr->s[I_G], 1<<c->nbits_g, x, y, 0, 0, 0);
-			b2 = quantize(clr->s[I_B], 1<<c->nbits_b, x, y, 0, 0, 0);
+			r2 = quantize(clr->s[I_R], 1<<c->nbits[I_R], x, y, 0, 0, 0);
+			g2 = quantize(clr->s[I_G], 1<<c->nbits[I_G], x, y, 0, 0, 0);
+			b2 = quantize(clr->s[I_B], 1<<c->nbits[I_B], x, y, 0, 0, 0);
 		}
-		if(c->bf_a) a2 = quantize(clr->s[I_A], 1<<c->nbits_a, x, y, 0, 0, 0);
+		if(c->bf[I_A]) a2 = quantize(clr->s[I_A], 1<<c->nbits[I_A], x, y, 0, 0, 0);
 
-		u = (r2<<c->bf_shift_r) | (g2<<c->bf_shift_g) | (b2<<c->bf_shift_b);
-		if(c->bf_a) u |= a2<<c->bf_shift_a;
+		u = (r2<<c->bf_shift[I_R]) | (g2<<c->bf_shift[I_G]) | (b2<<c->bf_shift[I_B]);
+		if(c->bf[I_A]) u |= a2<<c->bf_shift[I_A];
 		c->mem[c->bitsoffset+offs+0] = (unsigned char)(u&0xff);
 		c->mem[c->bitsoffset+offs+1] = (unsigned char)((u>>8)&0xff);
 	}
@@ -735,11 +735,11 @@ static void write_bitfields(struct context *c)
 	size_t offs;
 	if(c->bitfieldssize!=12 && c->bitfieldssize!=16) return;
 	offs = 14+c->headersize;
-	set_uint32(c,offs  ,c->bf_r);
-	set_uint32(c,offs+4,c->bf_g);
-	set_uint32(c,offs+8,c->bf_b);
+	set_uint32(c,offs  ,c->bf[I_R]);
+	set_uint32(c,offs+4,c->bf[I_G]);
+	set_uint32(c,offs+8,c->bf[I_B]);
 	if(c->bitfieldssize==16) {
-		set_uint32(c,offs+12,c->bf_a);
+		set_uint32(c,offs+12,c->bf[I_A]);
 	}
 }
 
@@ -926,14 +926,14 @@ static void write_bitmapinfoheader(struct context *c)
 	}
 	if(c->headersize>=52) {
 		if(c->compression==3) {
-			set_uint32(c,14+40,c->bf_r);
-			set_uint32(c,14+44,c->bf_g);
-			set_uint32(c,14+48,c->bf_b);
+			set_uint32(c,14+40,c->bf[I_R]);
+			set_uint32(c,14+44,c->bf[I_G]);
+			set_uint32(c,14+48,c->bf[I_B]);
 		}
 	}
 	if(c->headersize>=56) {
 		if(c->compression==3) {
-			set_uint32(c,14+52,c->bf_a);
+			set_uint32(c,14+52,c->bf[I_A]);
 		}
 	}
 	if(c->headersize>=108) {
@@ -1545,11 +1545,11 @@ static int run(struct global_context *glctx, struct context *c)
 	defaultbmp(glctx, c);
 	c->filename = "g/rgb16.bmp";
 	c->bpp = 16;
-	c->nbits_r = c->nbits_g = c->nbits_b = 5;
+	c->nbits[I_R] = c->nbits[I_G] = c->nbits[I_B] = 5;
 	c->pal_entries = 0;
-	c->nbits_r = 5; c->bf_shift_r = 10;
-	c->nbits_g = 5; c->bf_shift_g = 5;
-	c->nbits_b = 5; c->bf_shift_b = 0;
+	c->nbits[I_R] = 5; c->bf_shift[I_R] = 10;
+	c->nbits[I_G] = 5; c->bf_shift[I_G] = 5;
+	c->nbits[I_B] = 5; c->bf_shift[I_B] = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
@@ -1558,9 +1558,9 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bpp = 16;
 	c->pal_entries = 0;
 	c->compression = BI_BITFIELDS;
-	c->bf_r = 0x0000f800; c->nbits_r = 5; c->bf_shift_r = 11;
-	c->bf_g = 0x000007e0; c->nbits_g = 6; c->bf_shift_g = 5;
-	c->bf_b = 0x0000001f; c->nbits_b = 5; c->bf_shift_b = 0;
+	c->bf[I_R] = 0x0000f800; c->nbits[I_R] = 5; c->bf_shift[I_R] = 11;
+	c->bf[I_G] = 0x000007e0; c->nbits[I_G] = 6; c->bf_shift[I_G] = 5;
+	c->bf[I_B] = 0x0000001f; c->nbits[I_B] = 5; c->bf_shift[I_B] = 0;
 	c->bitfieldssize = 12;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
@@ -1570,9 +1570,9 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bpp = 16;
 	c->pal_entries = 0;
 	c->compression = BI_BITFIELDS;
-	c->bf_r = 0x0000ff00; c->nbits_r = 8; c->bf_shift_r = 8;
-	c->bf_g = 0x000000ff; c->nbits_g = 8; c->bf_shift_g = 0;
-	c->bf_b = 0x00000000; c->nbits_b = 0; c->bf_shift_b = 0;
+	c->bf[I_R] = 0x0000ff00; c->nbits[I_R] = 8; c->bf_shift[I_R] = 8;
+	c->bf[I_G] = 0x000000ff; c->nbits[I_G] = 8; c->bf_shift[I_G] = 0;
+	c->bf[I_B] = 0x00000000; c->nbits[I_B] = 0; c->bf_shift[I_B] = 0;
 	c->bitfieldssize = 12;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
@@ -1582,9 +1582,9 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bpp = 16;
 	c->pal_entries = 256;
 	c->compression = BI_BITFIELDS;
-	c->bf_r = 0x0000f800; c->nbits_r = 5; c->bf_shift_r = 11;
-	c->bf_g = 0x000007e0; c->nbits_g = 6; c->bf_shift_g = 5;
-	c->bf_b = 0x0000001f; c->nbits_b = 5; c->bf_shift_b = 0;
+	c->bf[I_R] = 0x0000f800; c->nbits[I_R] = 5; c->bf_shift[I_R] = 11;
+	c->bf[I_G] = 0x000007e0; c->nbits[I_G] = 6; c->bf_shift[I_G] = 5;
+	c->bf[I_B] = 0x0000001f; c->nbits[I_B] = 5; c->bf_shift[I_B] = 0;
 	c->bitfieldssize = 12;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
@@ -1595,10 +1595,10 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bpp = 16;
 	c->pal_entries = 0;
 	c->compression = BI_BITFIELDS;
-	c->bf_r = 0x00000f00; c->nbits_r = 4; c->bf_shift_r = 8;
-	c->bf_g = 0x000000f0; c->nbits_g = 4; c->bf_shift_g = 4;
-	c->bf_b = 0x0000000f; c->nbits_b = 4; c->bf_shift_b = 0;
-	c->bf_a = 0x0000f000; c->nbits_a = 4; c->bf_shift_a = 12;
+	c->bf[I_R] = 0x00000f00; c->nbits[I_R] = 4; c->bf_shift[I_R] = 8;
+	c->bf[I_G] = 0x000000f0; c->nbits[I_G] = 4; c->bf_shift[I_G] = 4;
+	c->bf[I_B] = 0x0000000f; c->nbits[I_B] = 4; c->bf_shift[I_B] = 0;
+	c->bf[I_A] = 0x0000f000; c->nbits[I_A] = 4; c->bf_shift[I_A] = 12;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
@@ -1608,10 +1608,10 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bpp = 16;
 	c->pal_entries = 0;
 	c->compression = BI_BITFIELDS;
-	c->bf_r = 0x00007c00; c->nbits_r = 5; c->bf_shift_r = 10;
-	c->bf_g = 0x000003e0; c->nbits_g = 5; c->bf_shift_g = 5;
-	c->bf_b = 0x0000001f; c->nbits_b = 5; c->bf_shift_b = 0;
-	c->bf_a = 0x00008000; c->nbits_a = 1; c->bf_shift_a = 15;
+	c->bf[I_R] = 0x00007c00; c->nbits[I_R] = 5; c->bf_shift[I_R] = 10;
+	c->bf[I_G] = 0x000003e0; c->nbits[I_G] = 5; c->bf_shift[I_G] = 5;
+	c->bf[I_B] = 0x0000001f; c->nbits[I_B] = 5; c->bf_shift[I_B] = 0;
+	c->bf[I_A] = 0x00008000; c->nbits[I_A] = 1; c->bf_shift[I_A] = 15;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
@@ -1621,10 +1621,10 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bpp = 16;
 	c->pal_entries = 0;
 	c->compression = BI_BITFIELDS;
-	c->bf_r = 0x00000800; c->nbits_r =  1; c->bf_shift_r = 11;
-	c->bf_g = 0x000001ff; c->nbits_g =  9; c->bf_shift_g =  0;
-	c->bf_b = 0x00000600; c->nbits_b =  2; c->bf_shift_b =  9;
-	c->bf_a = 0x0000f000; c->nbits_a =  4; c->bf_shift_a = 12;
+	c->bf[I_R] = 0x00000800; c->nbits[I_R] =  1; c->bf_shift[I_R] = 11;
+	c->bf[I_G] = 0x000001ff; c->nbits[I_G] =  9; c->bf_shift[I_G] =  0;
+	c->bf[I_B] = 0x00000600; c->nbits[I_B] =  2; c->bf_shift[I_B] =  9;
+	c->bf[I_A] = 0x0000f000; c->nbits[I_A] =  4; c->bf_shift[I_A] = 12;
 	c->dither = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
@@ -1634,9 +1634,9 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bpp = 16;
 	c->pal_entries = 0;
 	c->compression = BI_BITFIELDS;
-	c->bf_r = 0x00000030; c->nbits_r = 2; c->bf_shift_r = 4;
-	c->bf_g = 0x0000000e; c->nbits_g = 3; c->bf_shift_g = 1;
-	c->bf_b = 0x00000001; c->nbits_b = 1; c->bf_shift_b = 0;
+	c->bf[I_R] = 0x00000030; c->nbits[I_R] = 2; c->bf_shift[I_R] = 4;
+	c->bf[I_G] = 0x0000000e; c->nbits[I_G] = 3; c->bf_shift[I_G] = 1;
+	c->bf[I_B] = 0x00000001; c->nbits[I_B] = 1; c->bf_shift[I_B] = 0;
 	c->bitfieldssize = 12;
 	c->dither = 1;
 	set_calculated_fields(c);
@@ -1647,9 +1647,9 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bpp = 16;
 	c->pal_entries = 0;
 	c->compression = BI_BITFIELDS;
-	c->bf_r = 0x00000038; c->nbits_r =  3; c->bf_shift_r = 3;
-	c->bf_g = 0x0000ffc0; c->nbits_g = 10; c->bf_shift_g = 6;
-	c->bf_b = 0x00000007; c->nbits_b =  3; c->bf_shift_b = 0;
+	c->bf[I_R] = 0x00000038; c->nbits[I_R] =  3; c->bf_shift[I_R] = 3;
+	c->bf[I_G] = 0x0000ffc0; c->nbits[I_G] = 10; c->bf_shift[I_G] = 6;
+	c->bf[I_B] = 0x00000007; c->nbits[I_B] =  3; c->bf_shift[I_B] = 0;
 	c->bitfieldssize = 12;
 	c->dither = 1;
 	set_calculated_fields(c);
@@ -1698,9 +1698,9 @@ static int run(struct global_context *glctx, struct context *c)
 	c->filename = "g/rgb32.bmp";
 	c->bpp = 32;
 	c->pal_entries = 0;
-	c->nbits_r = 8; c->bf_shift_r = 16;
-	c->nbits_g = 8; c->bf_shift_g = 8;
-	c->nbits_b = 8; c->bf_shift_b = 0;
+	c->nbits[I_R] = 8; c->bf_shift[I_R] = 16;
+	c->nbits[I_G] = 8; c->bf_shift[I_G] = 8;
+	c->nbits[I_B] = 8; c->bf_shift[I_B] = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
@@ -1709,9 +1709,9 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bpp = 32;
 	c->compression = BI_BITFIELDS;
 	c->pal_entries = 0;
-	c->bf_r = 0xff000000; c->nbits_r = 8; c->bf_shift_r = 24;
-	c->bf_g = 0x00000ff0; c->nbits_g = 8; c->bf_shift_g = 4;
-	c->bf_b = 0x00ff0000; c->nbits_b = 8; c->bf_shift_b = 16;
+	c->bf[I_R] = 0xff000000; c->nbits[I_R] = 8; c->bf_shift[I_R] = 24;
+	c->bf[I_G] = 0x00000ff0; c->nbits[I_G] = 8; c->bf_shift[I_G] = 4;
+	c->bf[I_B] = 0x00ff0000; c->nbits[I_B] = 8; c->bf_shift[I_B] = 16;
 	c->bitfieldssize = 12;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
@@ -1721,10 +1721,10 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bpp = 32;
 	c->pal_entries = 0;
 	c->alphahack32 = 1;
-	c->nbits_r = 8; c->bf_shift_r = 16;
-	c->nbits_g = 8; c->bf_shift_g = 8;
-	c->nbits_b = 8; c->bf_shift_b = 0;
-	c->nbits_a = 8;
+	c->nbits[I_R] = 8; c->bf_shift[I_R] = 16;
+	c->nbits[I_G] = 8; c->bf_shift[I_G] = 8;
+	c->nbits[I_B] = 8; c->bf_shift[I_B] = 0;
+	c->nbits[I_A] = 8;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
@@ -1733,9 +1733,9 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bpp = 32;
 	c->compression = BI_BITFIELDS;
 	c->pal_entries = 0;
-	c->bf_r = 0xffe00000; c->nbits_r = 11; c->bf_shift_r = 21;
-	c->bf_g = 0x001ffc00; c->nbits_g = 11; c->bf_shift_g = 10;
-	c->bf_b = 0x000003ff; c->nbits_b = 10; c->bf_shift_b = 0;
+	c->bf[I_R] = 0xffe00000; c->nbits[I_R] = 11; c->bf_shift[I_R] = 21;
+	c->bf[I_G] = 0x001ffc00; c->nbits[I_G] = 11; c->bf_shift[I_G] = 10;
+	c->bf[I_B] = 0x000003ff; c->nbits[I_B] = 10; c->bf_shift[I_B] = 0;
 	c->bitfieldssize = 12;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
@@ -1745,9 +1745,9 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bpp = 32;
 	c->compression = BI_BITFIELDS;
 	c->pal_entries = 0;
-	c->bf_r = 0xfe000000; c->nbits_r = 7; c->bf_shift_r = 25;
-	c->bf_g = 0x01ffff80; c->nbits_g = 18; c->bf_shift_g = 7;
-	c->bf_b = 0x0000007f; c->nbits_b = 7; c->bf_shift_b = 0;
+	c->bf[I_R] = 0xfe000000; c->nbits[I_R] = 7; c->bf_shift[I_R] = 25;
+	c->bf[I_G] = 0x01ffff80; c->nbits[I_G] = 18; c->bf_shift[I_G] = 7;
+	c->bf[I_B] = 0x0000007f; c->nbits[I_B] = 7; c->bf_shift[I_B] = 0;
 	c->bitfieldssize = 12;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
@@ -1757,10 +1757,10 @@ static int run(struct global_context *glctx, struct context *c)
 	c->headersize = 124;
 	c->bpp = 32;
 	c->compression = BI_BITFIELDS;
-	c->bf_r = 0xff000000; c->nbits_r = 8; c->bf_shift_r = 24;
-	c->bf_g = 0x0000ff00; c->nbits_g = 8; c->bf_shift_g = 8;
-	c->bf_b = 0x000000ff; c->nbits_b = 8; c->bf_shift_b = 0;
-	c->bf_a = 0x00ff0000; c->nbits_a = 8; c->bf_shift_a = 16;
+	c->bf[I_R] = 0xff000000; c->nbits[I_R] = 8; c->bf_shift[I_R] = 24;
+	c->bf[I_G] = 0x0000ff00; c->nbits[I_G] = 8; c->bf_shift[I_G] = 8;
+	c->bf[I_B] = 0x000000ff; c->nbits[I_B] = 8; c->bf_shift[I_B] = 0;
+	c->bf[I_A] = 0x00ff0000; c->nbits[I_A] = 8; c->bf_shift[I_A] = 16;
 	c->pal_entries = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
@@ -1770,10 +1770,10 @@ static int run(struct global_context *glctx, struct context *c)
 	c->headersize = 124;
 	c->bpp = 32;
 	c->compression = BI_BITFIELDS;
-	c->bf_r = 0x3ff00000; c->nbits_r = 10; c->bf_shift_r = 20;
-	c->bf_g = 0x000ffc00; c->nbits_g = 10; c->bf_shift_g = 10;
-	c->bf_b = 0x000003ff; c->nbits_b = 10; c->bf_shift_b = 0;
-	c->bf_a = 0xc0000000; c->nbits_a = 2;  c->bf_shift_a = 30;
+	c->bf[I_R] = 0x3ff00000; c->nbits[I_R] = 10; c->bf_shift[I_R] = 20;
+	c->bf[I_G] = 0x000ffc00; c->nbits[I_G] = 10; c->bf_shift[I_G] = 10;
+	c->bf[I_B] = 0x000003ff; c->nbits[I_B] = 10; c->bf_shift[I_B] = 0;
+	c->bf[I_A] = 0xc0000000; c->nbits[I_A] = 2;  c->bf_shift[I_A] = 30;
 	c->pal_entries = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
@@ -1783,10 +1783,10 @@ static int run(struct global_context *glctx, struct context *c)
 	c->headersize = 124;
 	c->bpp = 32;
 	c->compression = BI_BITFIELDS;
-	c->bf_r = 0x0000ff00; c->nbits_r =  8; c->bf_shift_r =  8;
-	c->bf_g = 0x0fff0000; c->nbits_g = 12; c->bf_shift_g = 16;
-	c->bf_b = 0x000000ff; c->nbits_b =  8; c->bf_shift_b =  0;
-	c->bf_a = 0xf0000000; c->nbits_a =  4; c->bf_shift_a = 28;
+	c->bf[I_R] = 0x0000ff00; c->nbits[I_R] =  8; c->bf_shift[I_R] =  8;
+	c->bf[I_G] = 0x0fff0000; c->nbits[I_G] = 12; c->bf_shift[I_G] = 16;
+	c->bf[I_B] = 0x000000ff; c->nbits[I_B] =  8; c->bf_shift[I_B] =  0;
+	c->bf[I_A] = 0xf0000000; c->nbits[I_A] =  4; c->bf_shift[I_A] = 28;
 	c->pal_entries = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
@@ -1796,10 +1796,10 @@ static int run(struct global_context *glctx, struct context *c)
 	c->headersize = 124;
 	c->bpp = 32;
 	c->compression = BI_BITFIELDS;
-	c->bf_r = 0x0fc00000; c->nbits_r =  6; c->bf_shift_r = 22;
-	c->bf_g = 0x003fffe0; c->nbits_g = 17; c->bf_shift_g =  5;
-	c->bf_b = 0x0000001f; c->nbits_b =  5; c->bf_shift_b =  0;
-	c->bf_a = 0xf0000000; c->nbits_a =  4; c->bf_shift_a = 28;
+	c->bf[I_R] = 0x0fc00000; c->nbits[I_R] =  6; c->bf_shift[I_R] = 22;
+	c->bf[I_G] = 0x003fffe0; c->nbits[I_G] = 17; c->bf_shift[I_G] =  5;
+	c->bf[I_B] = 0x0000001f; c->nbits[I_B] =  5; c->bf_shift[I_B] =  0;
+	c->bf[I_A] = 0xf0000000; c->nbits[I_A] =  4; c->bf_shift[I_A] = 28;
 	c->pal_entries = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
@@ -1809,9 +1809,9 @@ static int run(struct global_context *glctx, struct context *c)
 	c->headersize = 52;
 	c->bpp = 32;
 	c->compression = BI_BITFIELDS;
-	c->bf_r = 0xff000000; c->nbits_r = 8; c->bf_shift_r = 24;
-	c->bf_g = 0x0000ff00; c->nbits_g = 8; c->bf_shift_g = 8;
-	c->bf_b = 0x000000ff; c->nbits_b = 8; c->bf_shift_b = 0;
+	c->bf[I_R] = 0xff000000; c->nbits[I_R] = 8; c->bf_shift[I_R] = 24;
+	c->bf[I_G] = 0x0000ff00; c->nbits[I_G] = 8; c->bf_shift[I_G] = 8;
+	c->bf[I_B] = 0x000000ff; c->nbits[I_B] = 8; c->bf_shift[I_B] = 0;
 	c->pal_entries = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
@@ -1821,10 +1821,10 @@ static int run(struct global_context *glctx, struct context *c)
 	c->headersize = 56;
 	c->bpp = 32;
 	c->compression = BI_BITFIELDS;
-	c->bf_r = 0xff000000; c->nbits_r = 8; c->bf_shift_r = 24;
-	c->bf_g = 0x0000ff00; c->nbits_g = 8; c->bf_shift_g = 8;
-	c->bf_b = 0x000000ff; c->nbits_b = 8; c->bf_shift_b = 0;
-	c->bf_a = 0x00ff0000; c->nbits_a = 8; c->bf_shift_a = 16;
+	c->bf[I_R] = 0xff000000; c->nbits[I_R] = 8; c->bf_shift[I_R] = 24;
+	c->bf[I_G] = 0x0000ff00; c->nbits[I_G] = 8; c->bf_shift[I_G] = 8;
+	c->bf[I_B] = 0x000000ff; c->nbits[I_B] = 8; c->bf_shift[I_B] = 0;
+	c->bf[I_A] = 0x00ff0000; c->nbits[I_A] = 8; c->bf_shift[I_A] = 16;
 	c->pal_entries = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
@@ -1833,10 +1833,10 @@ static int run(struct global_context *glctx, struct context *c)
 	c->filename = "q/rgba32abf.bmp";
 	c->bpp = 32;
 	c->compression = BI_ALPHABITFIELDS;
-	c->bf_r = 0xff000000; c->nbits_r = 8; c->bf_shift_r = 24;
-	c->bf_g = 0x0000ff00; c->nbits_g = 8; c->bf_shift_g = 8;
-	c->bf_b = 0x000000ff; c->nbits_b = 8; c->bf_shift_b = 0;
-	c->bf_a = 0x00ff0000; c->nbits_a = 8; c->bf_shift_a = 16;
+	c->bf[I_R] = 0xff000000; c->nbits[I_R] = 8; c->bf_shift[I_R] = 24;
+	c->bf[I_G] = 0x0000ff00; c->nbits[I_G] = 8; c->bf_shift[I_G] = 8;
+	c->bf[I_B] = 0x000000ff; c->nbits[I_B] = 8; c->bf_shift[I_B] = 0;
+	c->bf[I_A] = 0x00ff0000; c->nbits[I_A] = 8; c->bf_shift[I_A] = 16;
 	c->bitfieldssize = 16;
 	c->pal_entries = 0;
 	set_calculated_fields(c);
