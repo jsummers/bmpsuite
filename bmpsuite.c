@@ -70,7 +70,11 @@ static const char *bmpovl[] = {
 #define I_A 3
 
 struct color_f {
-	double s[4]; // [0]=r, [1]=g, [2]=b, [3]=a
+	double s[4]; // [0]=R, [1]=G, [2]=B, [3]=A
+};
+
+struct color_i {
+	unsigned int s[4]; // R, G, B, A
 };
 
 struct global_context {
@@ -314,10 +318,17 @@ static int quantize(double v_to_1, int numcc, int x, int y,
 		return (int)floor_to_maxcc;
 }
 
+static double srgb_to_linear_gray(const struct color_f *clr)
+{
+	return srgb_to_linear(clr->s[I_R])*0.212655 +
+		srgb_to_linear(clr->s[I_G])*0.715158 +
+		srgb_to_linear(clr->s[I_B])*0.072187;
+}
+
 static void set_pixel(struct context *c, int x, int y,
   const struct color_f *clr)
 {
-	unsigned int r2, g2, b2, a2;
+	struct color_i qclr;
 	int tmp1, tmp2, tmp3;
 	int p;
 	size_t row_offs;
@@ -332,14 +343,14 @@ static void set_pixel(struct context *c, int x, int y,
 
 	if(c->bpp==32) {
 		offs = row_offs + 4*x;
-		r2 = quantize(clr->s[I_R], 1<<c->nbits[I_R], x, y, 0, 0, 0);
-		g2 = quantize(clr->s[I_G], 1<<c->nbits[I_G], x, y, 0, 0, 0);
-		b2 = quantize(clr->s[I_B], 1<<c->nbits[I_B], x, y, 0, 0, 0);
-		if(c->bf[I_A] || c->alphahack32) a2 = quantize(clr->s[I_A], 1<<c->nbits[I_A], x, y, 0, 0, 0);
-		else a2 = 0;
-		u = (r2<<c->bf_shift[I_R]) | (g2<<c->bf_shift[I_G]) | (b2<<c->bf_shift[I_B]);
-		if(c->bf[I_A]) u |= a2<<c->bf_shift[I_A];
-		else if(c->alphahack32) u |= a2<<24;
+		qclr.s[I_R] = quantize(clr->s[I_R], 1<<c->nbits[I_R], x, y, 0, 0, 0);
+		qclr.s[I_G] = quantize(clr->s[I_G], 1<<c->nbits[I_G], x, y, 0, 0, 0);
+		qclr.s[I_B] = quantize(clr->s[I_B], 1<<c->nbits[I_B], x, y, 0, 0, 0);
+		if(c->bf[I_A] || c->alphahack32) qclr.s[I_A] = quantize(clr->s[I_A], 1<<c->nbits[I_A], x, y, 0, 0, 0);
+		else qclr.s[I_A] = 0;
+		u = (qclr.s[I_R]<<c->bf_shift[I_R]) | (qclr.s[I_G]<<c->bf_shift[I_G]) | (qclr.s[I_B]<<c->bf_shift[I_B]);
+		if(c->bf[I_A]) u |= qclr.s[I_A]<<c->bf_shift[I_A];
+		else if(c->alphahack32) u |= qclr.s[I_A]<<24;
 		c->mem[c->bitsoffset+offs+0] = (unsigned char)(u&0xff);
 		c->mem[c->bitsoffset+offs+1] = (unsigned char)((u>>8)&0xff);
 		c->mem[c->bitsoffset+offs+2] = (unsigned char)((u>>16)&0xff);
@@ -347,29 +358,29 @@ static void set_pixel(struct context *c, int x, int y,
 	}
 	else if(c->bpp==24) {
 		offs = row_offs + 3*x;
-		r2 = quantize(clr->s[I_R], 256, x, y, 0, 0, 0);
-		g2 = quantize(clr->s[I_G], 256, x, y, 0, 0, 0);
-		b2 = quantize(clr->s[I_B], 256, x, y, 0, 0, 0);
-		c->mem[c->bitsoffset+offs+0] = (unsigned char)b2;
-		c->mem[c->bitsoffset+offs+1] = (unsigned char)g2;
-		c->mem[c->bitsoffset+offs+2] = (unsigned char)r2;
+		qclr.s[I_R] = quantize(clr->s[I_R], 256, x, y, 0, 0, 0);
+		qclr.s[I_G] = quantize(clr->s[I_G], 256, x, y, 0, 0, 0);
+		qclr.s[I_B] = quantize(clr->s[I_B], 256, x, y, 0, 0, 0);
+		c->mem[c->bitsoffset+offs+0] = (unsigned char)qclr.s[I_B];
+		c->mem[c->bitsoffset+offs+1] = (unsigned char)qclr.s[I_G];
+		c->mem[c->bitsoffset+offs+2] = (unsigned char)qclr.s[I_R];
 	}
 	else if(c->bpp==16) {
 		offs = row_offs + 2*x;
 		if(c->dither) {
-			r2 = quantize(clr->s[I_R], 1<<c->nbits[I_R], x, y, 1, 1, 1);
-			g2 = quantize(clr->s[I_G], 1<<c->nbits[I_G], x, y, 1, 1, 1);
-			b2 = quantize(clr->s[I_B], 1<<c->nbits[I_B], x, y, 1, 1, 1);
+			qclr.s[I_R] = quantize(clr->s[I_R], 1<<c->nbits[I_R], x, y, 1, 1, 1);
+			qclr.s[I_G] = quantize(clr->s[I_G], 1<<c->nbits[I_G], x, y, 1, 1, 1);
+			qclr.s[I_B] = quantize(clr->s[I_B], 1<<c->nbits[I_B], x, y, 1, 1, 1);
 		}
 		else {
-			r2 = quantize(clr->s[I_R], 1<<c->nbits[I_R], x, y, 0, 0, 0);
-			g2 = quantize(clr->s[I_G], 1<<c->nbits[I_G], x, y, 0, 0, 0);
-			b2 = quantize(clr->s[I_B], 1<<c->nbits[I_B], x, y, 0, 0, 0);
+			qclr.s[I_R] = quantize(clr->s[I_R], 1<<c->nbits[I_R], x, y, 0, 0, 0);
+			qclr.s[I_G] = quantize(clr->s[I_G], 1<<c->nbits[I_G], x, y, 0, 0, 0);
+			qclr.s[I_B] = quantize(clr->s[I_B], 1<<c->nbits[I_B], x, y, 0, 0, 0);
 		}
-		if(c->bf[I_A]) a2 = quantize(clr->s[I_A], 1<<c->nbits[I_A], x, y, 0, 0, 0);
+		if(c->bf[I_A]) qclr.s[I_A] = quantize(clr->s[I_A], 1<<c->nbits[I_A], x, y, 0, 0, 0);
 
-		u = (r2<<c->bf_shift[I_R]) | (g2<<c->bf_shift[I_G]) | (b2<<c->bf_shift[I_B]);
-		if(c->bf[I_A]) u |= a2<<c->bf_shift[I_A];
+		u = (qclr.s[I_R]<<c->bf_shift[I_R]) | (qclr.s[I_G]<<c->bf_shift[I_G]) | (qclr.s[I_B]<<c->bf_shift[I_B]);
+		if(c->bf[I_A]) u |= qclr.s[I_A]<<c->bf_shift[I_A];
 		c->mem[c->bitsoffset+offs+0] = (unsigned char)(u&0xff);
 		c->mem[c->bitsoffset+offs+1] = (unsigned char)((u>>8)&0xff);
 	}
@@ -380,9 +391,7 @@ static void set_pixel(struct context *c, int x, int y,
 			double current = 0.0;
 			int entries = c->pal_entries - c->palette_reserve - 1;
 
-			tmpd = srgb_to_linear(clr->s[I_R])*0.212655
-			 + srgb_to_linear(clr->s[I_G])*0.715158
-			 + srgb_to_linear(clr->s[I_B])*0.072187;
+			tmpd = srgb_to_linear_gray(clr);
 
 			p = 1;
 			current = srgb_to_linear(p / (double)entries);
@@ -416,9 +425,7 @@ static void set_pixel(struct context *c, int x, int y,
 			double current = 0.0;
 			int entries = c->pal_entries - c->palette_reserve - 1;
 
-			tmpd = srgb_to_linear(clr->s[I_R])*0.212655
-			 + srgb_to_linear(clr->s[I_G])*0.715158
-			 + srgb_to_linear(clr->s[I_B])*0.072187;
+			tmpd = srgb_to_linear_gray(clr);
 
 			p = 1;
 			current = srgb_to_linear(p / (double)entries);
@@ -449,9 +456,7 @@ static void set_pixel(struct context *c, int x, int y,
 		const double gray1 = 0.0908417111646935; // = srgb_to_linear(1/3)
 		const double gray2 = 0.4019777798321956; // = srgb_to_linear(2/3)
 		offs = row_offs + x/4;
-		tmpd = srgb_to_linear(clr->s[I_R])*0.212655
-			 + srgb_to_linear(clr->s[I_G])*0.715158
-			 + srgb_to_linear(clr->s[I_B])*0.072187;
+		tmpd = srgb_to_linear_gray(clr);
 
 		if(tmpd<gray1) {
 			tmp1 = ordered_dither_lowlevel(tmpd/gray1,x,y) ? 1 : 0;
@@ -466,9 +471,7 @@ static void set_pixel(struct context *c, int x, int y,
 	}
 	else if(c->bpp==1) {
 		offs = row_offs + x/8;
-		tmpd = srgb_to_linear(clr->s[I_R])*0.212655
-			 + srgb_to_linear(clr->s[I_G])*0.715158
-			 + srgb_to_linear(clr->s[I_B])*0.072187;
+		tmpd = srgb_to_linear_gray(clr);
 		tmp1 = ordered_dither_lowlevel(tmpd,x,y);
 		if(c->pal_wb) tmp1 = 1-tmp1; // Palette starts with white, so invert the colors.
 		if(c->pal_p1) tmp1 = 0;
