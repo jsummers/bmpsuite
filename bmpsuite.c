@@ -182,6 +182,16 @@ static double srgb_to_linear(double v_srgb)
 	}
 }
 
+static double linear_to_srgb(double v_linear)
+{
+	if(v_linear<=0.0031308) {
+		return v_linear*12.92;
+	}
+	else {
+		return 1.055*pow(v_linear, 1.0/2.4) - 0.055;
+	}
+}
+
 static void get_pixel_color(struct context *c, int x1, int y1,
 	struct color_f *clr)
 {
@@ -276,11 +286,12 @@ static int ordered_dither_lowlevel(double fraction, int x, int y)
 // 'v' is on a scale from 0.0 to 1.0.
 // numcc is the number of output color codes, e.g. 256. The result will be
 // from 0 to (numcc-1).
-// This returns the output color code on a scale of 0 to maxcc.
+// Not all combinations of flags are supported.
 static int quantize(double v_to_1, int numcc, int x, int y,
 	int dither, int from_srgb, int to_srgb)
 {
 	double v_to_1_linear;
+	double v_to_1_srgb;
 	double v_to_maxcc;
 	double floor_to_maxcc, ceil_to_maxcc;
 	double floor_to_1, ceil_to_1;
@@ -292,7 +303,8 @@ static int quantize(double v_to_1, int numcc, int x, int y,
 		return scale_to_int(v_to_1, numcc);
 	}
 
-	v_to_maxcc = v_to_1*maxcc;
+	v_to_1_srgb = from_srgb ? v_to_1 : linear_to_srgb(v_to_1);
+	v_to_maxcc = v_to_1_srgb*maxcc;
 	floor_to_maxcc = floor(v_to_maxcc);
 	if(floor_to_maxcc>=(double)maxcc) return maxcc;
 	ceil_to_maxcc = floor_to_maxcc+1.0;
@@ -305,9 +317,8 @@ static int quantize(double v_to_1, int numcc, int x, int y,
 
 	floor_to_1 = floor_to_maxcc/maxcc;
 	ceil_to_1 = ceil_to_maxcc/maxcc;
-
 	floor_to_1_linear = srgb_to_linear(floor_to_1);
-	v_to_1_linear = srgb_to_linear(v_to_1);
+	v_to_1_linear = from_srgb ? srgb_to_linear(v_to_1) : v_to_1;
 	ceil_to_1_linear = srgb_to_linear(ceil_to_1);
 
 	fraction = (v_to_1_linear-floor_to_1_linear)/(ceil_to_1_linear-floor_to_1_linear);
@@ -387,22 +398,9 @@ static void set_pixel(struct context *c, int x, int y,
 	else if(c->bpp==8) {
 		offs = row_offs + x;
 		if (c->pal_gs) {
-			double prev = 0.0;
-			double current = 0.0;
-			int entries = c->pal_entries - c->palette_reserve - 1;
-
 			tmpd = srgb_to_linear_gray(clr);
+			p = quantize(tmpd, c->pal_entries - c->palette_reserve, x, y, 1, 0, 1);
 
-			p = 1;
-			current = srgb_to_linear(p / (double)entries);
-			while ((tmpd > current) && (p < entries))
-			{
-				p++;
-				prev = current;
-				current = srgb_to_linear(p / (double)entries);
-			}
-			if (!ordered_dither_lowlevel((tmpd-prev)/(current-prev),x,y))
-				p--;
 			if(c->palette_reserve) {
 				if(p<c->pal_entries) p++;
 			}
@@ -421,22 +419,9 @@ static void set_pixel(struct context *c, int x, int y,
 	else if(c->bpp==4) {
 		offs = row_offs + x/2;
 		if (c->pal_gs) {
-			double prev = 0.0;
-			double current = 0.0;
-			int entries = c->pal_entries - c->palette_reserve - 1;
-
 			tmpd = srgb_to_linear_gray(clr);
+			p = quantize(tmpd, c->pal_entries - c->palette_reserve, x, y, 1, 0, 1);
 
-			p = 1;
-			current = srgb_to_linear(p / (double)entries);
-			while ((tmpd > current) && (p < entries))
-			{
-				p++;
-				prev = current;
-				current = srgb_to_linear(p / (double)entries);
-			}
-			if (!ordered_dither_lowlevel((tmpd-prev)/(current-prev),x,y))
-				p--;
 			if(c->palette_reserve) {
 				if(p<c->pal_entries) p++;
 			}
@@ -453,26 +438,15 @@ static void set_pixel(struct context *c, int x, int y,
 			c->mem[c->bitsoffset+offs] |= p<<4;
 	}
 	else if(c->bpp==2) {
-		const double gray1 = 0.0908417111646935; // = srgb_to_linear(1/3)
-		const double gray2 = 0.4019777798321956; // = srgb_to_linear(2/3)
 		offs = row_offs + x/4;
 		tmpd = srgb_to_linear_gray(clr);
-
-		if(tmpd<gray1) {
-			tmp1 = ordered_dither_lowlevel(tmpd/gray1,x,y) ? 1 : 0;
-		}
-		else if(tmpd<gray2) {
-			tmp1 = ordered_dither_lowlevel((tmpd-gray1)/(gray2-gray1),x,y) ? 2 : 1;
-		}
-		else {
-			tmp1 = ordered_dither_lowlevel((tmpd-gray2)/(1.0-gray2),x,y) ? 3 : 2;
-		}
+		tmp1 = quantize(tmpd, 4, x, y, 1, 0, 1);
 		c->mem[c->bitsoffset+offs] |= tmp1<<(2*(3-x%4));
 	}
 	else if(c->bpp==1) {
 		offs = row_offs + x/8;
 		tmpd = srgb_to_linear_gray(clr);
-		tmp1 = ordered_dither_lowlevel(tmpd,x,y);
+		tmp1 = quantize(tmpd, 2, x, y, 1, 0, 1);
 		if(c->pal_wb) tmp1 = 1-tmp1; // Palette starts with white, so invert the colors.
 		if(c->pal_p1) tmp1 = 0;
 		if(tmp1) {
