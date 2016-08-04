@@ -373,9 +373,9 @@ static void set_pixel(struct context *c, int x, int y,
 
 	if(c->bpp==32) {
 		offs = row_offs + 4*x;
-		qclr.s[I_R] = quantize(clr->s[I_R], 1<<c->nbits[I_R], x, y, 0, 0, 0);
-		qclr.s[I_G] = quantize(clr->s[I_G], 1<<c->nbits[I_G], x, y, 0, 0, 0);
-		qclr.s[I_B] = quantize(clr->s[I_B], 1<<c->nbits[I_B], x, y, 0, 0, 0);
+		for(z=0; z<3; z++) {
+			qclr.s[z] = quantize(clr->s[z], 1<<c->nbits[z], x, y, 0, 0, 0);
+		}
 		if(c->bf[I_A] || c->alphahack32) {
 			qclr.s[I_A] = quantize(clr->s[I_A], 1<<c->nbits[I_A], x, y, c->dither[I_A], 0, 0);
 		}
@@ -391,9 +391,9 @@ static void set_pixel(struct context *c, int x, int y,
 	}
 	else if(c->bpp==24) {
 		offs = row_offs + 3*x;
-		qclr.s[I_R] = quantize(clr->s[I_R], 256, x, y, 0, 0, 0);
-		qclr.s[I_G] = quantize(clr->s[I_G], 256, x, y, 0, 0, 0);
-		qclr.s[I_B] = quantize(clr->s[I_B], 256, x, y, 0, 0, 0);
+		for(z=0; z<3; z++) {
+			qclr.s[z] = quantize(clr->s[z], 256, x, y, 0, 0, 0);
+		}
 		c->mem[c->bitsoffset+offs+0] = (unsigned char)qclr.s[I_B];
 		c->mem[c->bitsoffset+offs+1] = (unsigned char)qclr.s[I_G];
 		c->mem[c->bitsoffset+offs+2] = (unsigned char)qclr.s[I_R];
@@ -792,9 +792,11 @@ static void write_palette(struct context *c)
 			// Grayscale palette
 			for(i=c->palette_reserve;i<c->pal_entries;i++) {
 				ii = i-c->palette_reserve;
-				c->mem[offs+bppe*i+2] = quantize(ii/(double)(c->pal_entries - c->palette_reserve - 1), 256, 0, 0, 0, 0, 0);
-				c->mem[offs+bppe*i+1] = quantize(ii/(double)(c->pal_entries - c->palette_reserve - 1), 256, 0, 0, 0, 0, 0);
-				c->mem[offs+bppe*i+0] = quantize(ii/(double)(c->pal_entries - c->palette_reserve - 1), 256, 0, 0, 0, 0, 0);
+				r = quantize(ii/(double)(c->pal_entries - c->palette_reserve - 1),
+					256, 0, 0, 0, 0, 0);
+				c->mem[offs+bppe*i+2] = r;
+				c->mem[offs+bppe*i+1] = r;
+				c->mem[offs+bppe*i+0] = r;
 			}
 		}
 		else {
@@ -865,7 +867,6 @@ static void write_palette(struct context *c)
 				c->mem[offs+4*i+0] = (unsigned char)i;
 			}
 		}
-
 	}
 }
 
@@ -889,6 +890,16 @@ static void write_bitmapcoreheader(struct context *c)
 	set_int16(c,14+6,c->h);
 	set_int16(c,14+8,1); // planes
 	set_int16(c,14+10,c->bpp);
+}
+
+static unsigned int fixed_2_30(double x)
+{
+	return (unsigned int)(0.5 + x*1073741824.0);
+}
+
+static unsigned int fixed_16_16(double x)
+{
+	return (unsigned int)(0.5 + x*65536.0);
 }
 
 static void write_bitmapinfoheader(struct context *c)
@@ -942,24 +953,24 @@ static void write_bitmapinfoheader(struct context *c)
 			// I don't know much about what should go here. These are the
 			// chromaticities for sRGB.
 			// These values are in 2.30 fixed-point format.
-			set_uint32(c,14+60, (unsigned int)(0.5+0.6400*1073741824.0)); // red-x
-			set_uint32(c,14+64, (unsigned int)(0.5+0.3300*1073741824.0)); // red-y
-			set_uint32(c,14+68, (unsigned int)(0.5+0.0300*1073741824.0)); // red-z
-			set_uint32(c,14+72, (unsigned int)(0.5+0.3000*1073741824.0)); // green-x
-			set_uint32(c,14+76, (unsigned int)(0.5+0.6000*1073741824.0)); // green-y
-			set_uint32(c,14+80, (unsigned int)(0.5+0.1000*1073741824.0)); // green-z
-			set_uint32(c,14+84, (unsigned int)(0.5+0.1500*1073741824.0)); // blue-x
-			set_uint32(c,14+88, (unsigned int)(0.5+0.0600*1073741824.0)); // blue-y
-			set_uint32(c,14+92, (unsigned int)(0.5+0.7900*1073741824.0)); // blue-z
+			set_uint32(c,14+60, fixed_2_30(0.6400)); // red-x
+			set_uint32(c,14+64, fixed_2_30(0.3300)); // red-y
+			set_uint32(c,14+68, fixed_2_30(0.0300)); // red-z
+			set_uint32(c,14+72, fixed_2_30(0.3000)); // green-x
+			set_uint32(c,14+76, fixed_2_30(0.6000)); // green-y
+			set_uint32(c,14+80, fixed_2_30(0.1000)); // green-z
+			set_uint32(c,14+84, fixed_2_30(0.1500)); // blue-x
+			set_uint32(c,14+88, fixed_2_30(0.0600)); // blue-y
+			set_uint32(c,14+92, fixed_2_30(0.7900)); // blue-z
 
 			// I'm not sure if this is supposed to be the "image file gamma", like
 			// 1.0/2.2, or the "display gamma", like 2.2. "Image file gamma" is my
 			// best guess.
 			gamma = 1.0/2.2;
 			// These values are in 16.16 fixed-point format.
-			set_uint32(c,14+ 96, (unsigned int)(0.5+gamma*65536.0)); // bV4GammaRed
-			set_uint32(c,14+100, (unsigned int)(0.5+gamma*65536.0)); // bV4GammaGreen
-			set_uint32(c,14+104, (unsigned int)(0.5+gamma*65536.0)); // bV4GammaBlue
+			set_uint32(c,14+ 96, fixed_16_16(gamma)); // bV4GammaRed
+			set_uint32(c,14+100, fixed_16_16(gamma)); // bV4GammaGreen
+			set_uint32(c,14+104, fixed_16_16(gamma)); // bV4GammaBlue
 		}
 		else {
 			if(c->embed_profile) {
