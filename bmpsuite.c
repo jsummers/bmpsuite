@@ -141,6 +141,7 @@ struct context {
 	int rletrns;
 	int palette_reserve; // Reserve palette color #0
 	int cbsize_flag;
+	int trnstype; // Transparency type: 0=none, 1=binary, 2=full
 };
 
 static void set_int16(struct context *c, size_t offset, int v)
@@ -219,10 +220,10 @@ static void get_pixel_color(struct context *c, int x1, int y1,
 			goto done;
 		}
 		else if(t=='2') {
-			if(c->bf[I_A]) {
+			if(c->trnstype==2) { // alpha transparency
 				// Make the inside of the overlay transparent, if possible.
 				if( (y-bmpovl_ypos)<(bmpovl_height/2) ) {
-					// Make the top half complete transparent ("transparent green").
+					// Make the top half completely transparent ("transparent green").
 					clr->s[I_R] = 0.0;  clr->s[I_G] = 1.0; clr->s[I_B] = 0.0; clr->s[I_A] = 0.0;
 				}
 				else {
@@ -231,7 +232,7 @@ static void get_pixel_color(struct context *c, int x1, int y1,
 					clr->s[I_A] = 2*((double)(y-bmpovl_ypos)) /(bmpovl_height) -1.0;
 				}
 			}
-			else if(c->rletrns) {
+			else if(c->trnstype==1) { // binary transparency
 				clr->s[I_R] = 1.0; clr->s[I_G] = 1.0; clr->s[I_B] = 1.0; clr->s[I_A] = 0.0;
 			}
 			else {
@@ -1049,6 +1050,16 @@ static void set_calculated_fields(struct context *c)
 	}
 
 	c->bitsoffset = 14 + c->headersize + c->bitfieldssize + c->palettesize + c->extrabytessize;
+
+	if(c->rletrns || (c->bf[I_A] && c->nbits[I_A]==1)) {
+		c->trnstype = 1; // binary transparency
+	}
+	else if(c->bf[I_A]) {
+		c->trnstype = 2; // alpha transparency
+	}
+	else {
+		c->trnstype = 0;
+	}
 }
 
 static void defaultbmp(struct global_context *glctx, struct context *c)
