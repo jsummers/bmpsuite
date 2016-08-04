@@ -115,7 +115,11 @@ struct context {
 	unsigned int bf[4]; // bitfields for R, G, B, A. Used if compression==3
 	unsigned int nbits[4];
 	unsigned int bf_shift[4];
-	int dither;
+
+	// The dither codes tell how to quantize each sample.
+	// -1 = default; 0 = no dithering; 1 = dithering
+	int dither[4];
+
 	int topdown;
 	int embed_profile;
 	int link_profile;
@@ -299,7 +303,7 @@ static int quantize(double v_to_1, int numcc, int x, int y,
 	double fraction;
 	int maxcc = numcc-1;
 
-	if(!dither && !from_srgb && !to_srgb) {
+	if(dither<1 && !from_srgb && !to_srgb) {
 		return scale_to_int(v_to_1, numcc);
 	}
 
@@ -342,6 +346,7 @@ static void set_pixel(struct context *c, int x, int y,
 	struct color_i qclr;
 	int tmp1, tmp2, tmp3;
 	int p;
+	int z;
 	size_t row_offs;
 	size_t offs;
 	double tmpd;
@@ -378,15 +383,11 @@ static void set_pixel(struct context *c, int x, int y,
 	}
 	else if(c->bpp==16) {
 		offs = row_offs + 2*x;
-		if(c->dither) {
-			qclr.s[I_R] = quantize(clr->s[I_R], 1<<c->nbits[I_R], x, y, 1, 1, 1);
-			qclr.s[I_G] = quantize(clr->s[I_G], 1<<c->nbits[I_G], x, y, 1, 1, 1);
-			qclr.s[I_B] = quantize(clr->s[I_B], 1<<c->nbits[I_B], x, y, 1, 1, 1);
-		}
-		else {
-			qclr.s[I_R] = quantize(clr->s[I_R], 1<<c->nbits[I_R], x, y, 0, 0, 0);
-			qclr.s[I_G] = quantize(clr->s[I_G], 1<<c->nbits[I_G], x, y, 0, 0, 0);
-			qclr.s[I_B] = quantize(clr->s[I_B], 1<<c->nbits[I_B], x, y, 0, 0, 0);
+		for(z=0; z<3; z++) {
+			if(c->dither[z]==1)
+				qclr.s[z] = quantize(clr->s[z], 1<<c->nbits[z], x, y, 1, 1, 1);
+			else
+				qclr.s[z] = quantize(clr->s[z], 1<<c->nbits[z], x, y, 0, 0, 0);
 		}
 		if(c->bf[I_A]) qclr.s[I_A] = quantize(clr->s[I_A], 1<<c->nbits[I_A], x, y, 0, 0, 0);
 
@@ -1052,6 +1053,8 @@ static void set_calculated_fields(struct context *c)
 
 static void defaultbmp(struct global_context *glctx, struct context *c)
 {
+	int z;
+
 	memset(glctx->mem,0,BMP_MAX_SIZE);
 	memset(c, 0, sizeof(struct context));
 
@@ -1073,6 +1076,10 @@ static void defaultbmp(struct global_context *glctx, struct context *c)
 	c->compression = 0; // BI_RGB
 	c->xpelspermeter = 2835; // = about 72dpi
 	c->ypelspermeter = 2835;
+
+	for(z=0; z<4; z++)
+		c->dither[z] = -1;
+
 	set_calculated_fields(c);
 }
 
@@ -1602,7 +1609,7 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bf[I_G] = 0x000001ff; c->nbits[I_G] =  9; c->bf_shift[I_G] =  0;
 	c->bf[I_B] = 0x00000600; c->nbits[I_B] =  2; c->bf_shift[I_B] =  9;
 	c->bf[I_A] = 0x0000f000; c->nbits[I_A] =  4; c->bf_shift[I_A] = 12;
-	c->dither = 1;
+	c->dither[I_R] = c->dither[I_G] = c->dither[I_B] = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
@@ -1615,7 +1622,7 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bf[I_G] = 0x0000000e; c->nbits[I_G] = 3; c->bf_shift[I_G] = 1;
 	c->bf[I_B] = 0x00000001; c->nbits[I_B] = 1; c->bf_shift[I_B] = 0;
 	c->bitfieldssize = 12;
-	c->dither = 1;
+	c->dither[I_R] = c->dither[I_G] = c->dither[I_B] = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
@@ -1628,7 +1635,7 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bf[I_G] = 0x0000ffc0; c->nbits[I_G] = 10; c->bf_shift[I_G] = 6;
 	c->bf[I_B] = 0x00000007; c->nbits[I_B] =  3; c->bf_shift[I_B] = 0;
 	c->bitfieldssize = 12;
-	c->dither = 1;
+	c->dither[I_R] = c->dither[I_G] = c->dither[I_B] = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
