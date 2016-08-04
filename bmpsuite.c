@@ -296,20 +296,27 @@ static int quantize(double v_to_1, int numcc, int x, int y,
 	int dither, int from_srgb, int to_srgb)
 {
 	double v_to_1_linear;
-	double v_to_1_srgb;
+	double v_to_1_targetcs;
 	double v_to_maxcc;
 	double floor_to_maxcc, ceil_to_maxcc;
 	double floor_to_1, ceil_to_1;
 	double floor_to_1_linear, ceil_to_1_linear;
 	double fraction;
+	int all_linear;
 	int maxcc = numcc-1;
 
 	if(dither<1 && !from_srgb && !to_srgb) {
 		return scale_to_int(v_to_1, numcc);
 	}
 
-	v_to_1_srgb = from_srgb ? v_to_1 : linear_to_srgb(v_to_1);
-	v_to_maxcc = v_to_1_srgb*maxcc;
+	all_linear = (!from_srgb && !to_srgb);
+
+	if(all_linear)
+		v_to_1_targetcs = v_to_1;
+	else
+		v_to_1_targetcs = from_srgb ? v_to_1 : linear_to_srgb(v_to_1);
+
+	v_to_maxcc = v_to_1_targetcs*maxcc;
 	floor_to_maxcc = floor(v_to_maxcc);
 	if(floor_to_maxcc>=(double)maxcc) return maxcc;
 	ceil_to_maxcc = floor_to_maxcc+1.0;
@@ -322,9 +329,15 @@ static int quantize(double v_to_1, int numcc, int x, int y,
 
 	floor_to_1 = floor_to_maxcc/maxcc;
 	ceil_to_1 = ceil_to_maxcc/maxcc;
-	floor_to_1_linear = srgb_to_linear(floor_to_1);
+	if(all_linear)
+		floor_to_1_linear = floor_to_1;
+	else
+		floor_to_1_linear = srgb_to_linear(floor_to_1);
 	v_to_1_linear = from_srgb ? srgb_to_linear(v_to_1) : v_to_1;
-	ceil_to_1_linear = srgb_to_linear(ceil_to_1);
+	if(all_linear)
+		ceil_to_1_linear = ceil_to_1;
+	else
+		ceil_to_1_linear = srgb_to_linear(ceil_to_1);
 
 	fraction = (v_to_1_linear-floor_to_1_linear)/(ceil_to_1_linear-floor_to_1_linear);
 
@@ -363,8 +376,11 @@ static void set_pixel(struct context *c, int x, int y,
 		qclr.s[I_R] = quantize(clr->s[I_R], 1<<c->nbits[I_R], x, y, 0, 0, 0);
 		qclr.s[I_G] = quantize(clr->s[I_G], 1<<c->nbits[I_G], x, y, 0, 0, 0);
 		qclr.s[I_B] = quantize(clr->s[I_B], 1<<c->nbits[I_B], x, y, 0, 0, 0);
-		if(c->bf[I_A] || c->alphahack32) qclr.s[I_A] = quantize(clr->s[I_A], 1<<c->nbits[I_A], x, y, 0, 0, 0);
-		else qclr.s[I_A] = 0;
+		if(c->bf[I_A] || c->alphahack32) {
+			qclr.s[I_A] = quantize(clr->s[I_A], 1<<c->nbits[I_A], x, y, c->dither[I_A], 0, 0);
+		}
+		else
+			qclr.s[I_A] = 0;
 		u = (qclr.s[I_R]<<c->bf_shift[I_R]) | (qclr.s[I_G]<<c->bf_shift[I_G]) | (qclr.s[I_B]<<c->bf_shift[I_B]);
 		if(c->bf[I_A]) u |= qclr.s[I_A]<<c->bf_shift[I_A];
 		else if(c->alphahack32) u |= qclr.s[I_A]<<24;
@@ -1774,6 +1790,7 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bf[I_G] = 0x000ffc00; c->nbits[I_G] = 10; c->bf_shift[I_G] = 10;
 	c->bf[I_B] = 0x000003ff; c->nbits[I_B] = 10; c->bf_shift[I_B] = 0;
 	c->bf[I_A] = 0xc0000000; c->nbits[I_A] = 2;  c->bf_shift[I_A] = 30;
+	c->dither[I_A] = 1;
 	c->pal_entries = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
