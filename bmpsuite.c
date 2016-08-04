@@ -1620,7 +1620,10 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bf[I_G] = 0x000001ff; c->nbits[I_G] =  9; c->bf_shift[I_G] =  0;
 	c->bf[I_B] = 0x00000600; c->nbits[I_B] =  2; c->bf_shift[I_B] =  9;
 	c->bf[I_A] = 0x0000f000; c->nbits[I_A] =  4; c->bf_shift[I_A] = 12;
-	c->dither[I_R] = c->dither[I_G] = c->dither[I_B] = 1;
+	c->dither[I_R] = 1;
+	c->dither[I_G] = 0;
+	c->dither[I_B] = 1;
+	c->dither[I_A] = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
@@ -1646,7 +1649,9 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bf[I_G] = 0x0000ffc0; c->nbits[I_G] = 10; c->bf_shift[I_G] = 6;
 	c->bf[I_B] = 0x00000007; c->nbits[I_B] =  3; c->bf_shift[I_B] = 0;
 	c->bitfieldssize = 12;
-	c->dither[I_R] = c->dither[I_G] = c->dither[I_B] = 1;
+	c->dither[I_R] = 1;
+	c->dither[I_G] = 0;
+	c->dither[I_B] = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
