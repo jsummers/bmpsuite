@@ -112,7 +112,7 @@ struct context {
 	int pal_wb; // 2-color, palette[0] = white
 	int pal_bg; // 2-color, blue & green
 	int pal_p1; // 1-color
-	unsigned int bf[4]; // bitfields for R, G, B, A. Used if compression==3
+	unsigned int bf[4]; // bitfields for R, G, B, A. Used if bpp==16 or 32.
 	unsigned int nbits[4];
 	unsigned int bf_shift[4];
 
@@ -123,7 +123,7 @@ struct context {
 	int topdown;
 	int embed_profile;
 	int link_profile;
-	int alphahack32;
+	int fakealpha;
 	int halfheight;
 	int zero_biSizeImage;
 	int bad_biSizeImage;
@@ -267,7 +267,8 @@ static void get_pixel_color(struct context *c, int x1, int y1,
 	}
 
 done:
-	if(c->alphahack32) clr->s[I_A] = 1.0 - ((double)y)/(c->h-1);
+	if(c->fakealpha)
+		clr->s[I_A] = 1.0 - ((double)y)/(c->h-1);
 }
 
 static int ordered_dither_lowlevel(double fraction, int x, int y)
@@ -376,14 +377,11 @@ static void set_pixel(struct context *c, int x, int y,
 		for(z=0; z<3; z++) {
 			qclr.s[z] = quantize(clr->s[z], 1<<c->nbits[z], x, y, 0, 0, 0);
 		}
-		if(c->bf[I_A] || c->alphahack32) {
+		if(c->nbits[I_A])
 			qclr.s[I_A] = quantize(clr->s[I_A], 1<<c->nbits[I_A], x, y, c->dither[I_A], 0, 0);
-		}
-		else
-			qclr.s[I_A] = 0;
+
 		u = (qclr.s[I_R]<<c->bf_shift[I_R]) | (qclr.s[I_G]<<c->bf_shift[I_G]) | (qclr.s[I_B]<<c->bf_shift[I_B]);
-		if(c->bf[I_A]) u |= qclr.s[I_A]<<c->bf_shift[I_A];
-		else if(c->alphahack32) u |= qclr.s[I_A]<<24;
+		if(c->nbits[I_A]) u |= qclr.s[I_A]<<c->bf_shift[I_A];
 		c->mem[c->bitsoffset+offs+0] = (unsigned char)(u&0xff);
 		c->mem[c->bitsoffset+offs+1] = (unsigned char)((u>>8)&0xff);
 		c->mem[c->bitsoffset+offs+2] = (unsigned char)((u>>16)&0xff);
@@ -406,10 +404,11 @@ static void set_pixel(struct context *c, int x, int y,
 			else
 				qclr.s[z] = quantize(clr->s[z], 1<<c->nbits[z], x, y, 0, 0, 0);
 		}
-		if(c->bf[I_A]) qclr.s[I_A] = quantize(clr->s[I_A], 1<<c->nbits[I_A], x, y, 0, 0, 0);
+		if(c->nbits[I_A])
+			qclr.s[I_A] = quantize(clr->s[I_A], 1<<c->nbits[I_A], x, y, c->dither[I_A], 0, 0);
 
 		u = (qclr.s[I_R]<<c->bf_shift[I_R]) | (qclr.s[I_G]<<c->bf_shift[I_G]) | (qclr.s[I_B]<<c->bf_shift[I_B]);
-		if(c->bf[I_A]) u |= qclr.s[I_A]<<c->bf_shift[I_A];
+		if(c->nbits[I_A]) u |= qclr.s[I_A]<<c->bf_shift[I_A];
 		c->mem[c->bitsoffset+offs+0] = (unsigned char)(u&0xff);
 		c->mem[c->bitsoffset+offs+1] = (unsigned char)((u>>8)&0xff);
 	}
@@ -930,14 +929,14 @@ static void write_bitmapinfoheader(struct context *c)
 		set_int32(c,14+32,(c->bad_palettesize) ? 0x12341234 : c->clr_used); // biClrUsed
 		set_int32(c,14+36,0); // biClrImportant
 	}
-	if(c->headersize>=52) {
+	if(c->headersize>=52 && c->headersize!=64) {
 		if(c->compression==3) {
 			set_uint32(c,14+40,c->bf[I_R]);
 			set_uint32(c,14+44,c->bf[I_G]);
 			set_uint32(c,14+48,c->bf[I_B]);
 		}
 	}
-	if(c->headersize>=56) {
+	if(c->headersize>=56 && c->headersize!=64) {
 		if(c->compression==3) {
 			set_uint32(c,14+52,c->bf[I_A]);
 		}
@@ -1612,6 +1611,20 @@ static int run(struct global_context *glctx, struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(glctx, c);
+	c->filename = "q/rgb16faketrns.bmp";
+	c->bpp = 16;
+	c->nbits[I_R] = c->nbits[I_G] = c->nbits[I_B] = 5;
+	c->pal_entries = 0;
+	c->fakealpha = 1;
+	c->nbits[I_R] = 5; c->bf_shift[I_R] = 10;
+	c->nbits[I_G] = 5; c->bf_shift[I_G] = 5;
+	c->nbits[I_B] = 5; c->bf_shift[I_B] = 0;
+	c->nbits[I_A] = 1; c->bf_shift[I_A] = 15;
+	c->dither[I_A] = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(glctx, c);
 	c->filename = "q/rgba16-4444.bmp";
 	c->headersize = 124;
 	c->bpp = 16;
@@ -1747,11 +1760,11 @@ static int run(struct global_context *glctx, struct context *c)
 	c->filename = "q/rgb32fakealpha.bmp";
 	c->bpp = 32;
 	c->pal_entries = 0;
-	c->alphahack32 = 1;
+	c->fakealpha = 1;
 	c->nbits[I_R] = 8; c->bf_shift[I_R] = 16;
 	c->nbits[I_G] = 8; c->bf_shift[I_G] = 8;
 	c->nbits[I_B] = 8; c->bf_shift[I_B] = 0;
-	c->nbits[I_A] = 8;
+	c->nbits[I_A] = 8; c->bf_shift[I_A] = 24;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
