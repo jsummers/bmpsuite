@@ -1727,6 +1727,7 @@ static int run(struct global_context *glctx, struct context *c)
 	c->filename = "q/rgb24prof2.bmp";
 	c->headersize = 124;
 	c->bpp = 24;
+	c->pal_entries = 0;
 	c->embed_profile = 1;
 	c->profile_to_embed = 1;
 	c->swaprg = 1;
