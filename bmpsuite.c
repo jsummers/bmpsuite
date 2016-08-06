@@ -122,6 +122,8 @@ struct context {
 
 	int topdown;
 	int embed_profile;
+	int profile_to_embed;
+	int swaprg;
 	int link_profile;
 	int fakealpha;
 	int halfheight;
@@ -391,6 +393,9 @@ static void set_pixel(struct context *c, int x, int y,
 		offs = row_offs + 3*x;
 		for(z=0; z<3; z++) {
 			qclr.s[z] = quantize(clr->s[z], 256, x, y, 0, 0, 0);
+		}
+		if(c->swaprg) {
+			u = qclr.s[I_R]; qclr.s[I_R] = qclr.s[I_G]; qclr.s[I_G] = u;
 		}
 		c->mem[c->bitsoffset+offs+0] = (unsigned char)qclr.s[I_B];
 		c->mem[c->bitsoffset+offs+1] = (unsigned char)qclr.s[I_G];
@@ -691,7 +696,7 @@ static int write_bits(struct context *c)
 	return 1;
 }
 
-static int write_profile(struct context *c, const char *fn)
+static int write_profile(struct context *c, const char *fn, int gap)
 {
 	int retval = 0;
 	FILE *f = NULL;
@@ -699,9 +704,9 @@ static int write_profile(struct context *c, const char *fn)
 	f=fopen(fn,"rb");
 	if(!f) goto done;
 
-	// The "+20" leaves a gap of 20 unused bytes between the bits and the
+	// The "+ gap" leaves a gap of unused bytes between the bits and the
 	// profile, just to be difficult.
-	c->profile_offset = c->bitsoffset + c->bitssize + 20;
+	c->profile_offset = c->bitsoffset + c->bitssize + gap;
 
 	c->profile_size = fread(&c->mem[c->profile_offset], 1, 100000-c->profile_offset, f);
 	if(c->profile_size<1) goto done;
@@ -715,6 +720,8 @@ done:
 
 static int write_lprofile(struct context *c)
 {
+	// Filenames are always encoded in Windows-1252.
+	// 0x95=bullet; 0xeb="e" with a diaeresis
 	static const char prof_fn[] = "C:\\temp\\test\x95\xeb.icc";
 
 	c->profile_offset = c->bitsoffset + c->bitssize + 10;
@@ -1011,7 +1018,12 @@ static int make_bmp(struct context *c)
 		return 0;
 	}
 	if(c->embed_profile) {
-		write_profile(c,"data/srgb.icc");
+		if(c->profile_to_embed==1) {
+			write_profile(c, "data/swap-r-g.icc", 0);
+		}
+		else {
+			write_profile(c, "data/srgb.icc", 20);
+		}
 	}
 	else if(c->link_profile) {
 		write_lprofile(c);
@@ -1708,6 +1720,16 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bpp = 24;
 	c->pal_entries = 0;
 	c->embed_profile = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(glctx, c);
+	c->filename = "q/rgb24prof2.bmp";
+	c->headersize = 124;
+	c->bpp = 24;
+	c->embed_profile = 1;
+	c->profile_to_embed = 1;
+	c->swaprg = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 

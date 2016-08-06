@@ -491,13 +491,22 @@ level of support for it is arguably not important.</p>
  </tr>
 
  <tr>
+  <td class=q>q/rgb24prof2.bmp</td>
+  <td>5</td>
+  <td class=b><img src="rgb24.png"></td>
+  <td class=b><img src="../q/rgb24prof2.bmp"></td>
+  <td>This image tries to test whether color profiles are fully supported.
+   It has the red and green channels swapped, and an embedded color profile
+   that tries to swap them back. Support for this is uncommon.</td>
+ </tr>
+
+ <tr>
   <td class=q>q/rgb24lprof.bmp</td>
   <td>5</td>
   <td class=b><img src="rgb24.png"></td>
   <td class=b><img src="../q/rgb24lprof.bmp"></td>
   <td>My attempt to make a BMP file with a linked color profile.
-   Support for linked profiles can lead to security vulnerabilities, and is not
-   recommended.</td>
+   Supporting linked profiles may be a bad idea, as it can lead to security vulnerabilities.</td>
  </tr>
 
  <tr>
