@@ -959,12 +959,22 @@ static void write_bitmapinfoheader(struct context *c)
 			// I don't know much about what should go here. These are the
 			// chromaticities for sRGB.
 			// These values are in 2.30 fixed-point format.
-			set_uint32(c,14+60, fixed_2_30(0.6400)); // red-x
-			set_uint32(c,14+64, fixed_2_30(0.3300)); // red-y
-			set_uint32(c,14+68, fixed_2_30(0.0300)); // red-z
-			set_uint32(c,14+72, fixed_2_30(0.3000)); // green-x
-			set_uint32(c,14+76, fixed_2_30(0.6000)); // green-y
-			set_uint32(c,14+80, fixed_2_30(0.1000)); // green-z
+			if (c->swaprg) {
+				set_uint32(c,14+60, fixed_2_30(0.3000)); // red-x
+				set_uint32(c,14+64, fixed_2_30(0.6000)); // red-y
+				set_uint32(c,14+68, fixed_2_30(0.1000)); // red-z
+				set_uint32(c,14+72, fixed_2_30(0.6400)); // green-x
+				set_uint32(c,14+76, fixed_2_30(0.3300)); // green-y
+				set_uint32(c,14+80, fixed_2_30(0.0300)); // green-z
+			}
+			else {
+				set_uint32(c,14+60, fixed_2_30(0.6400)); // red-x
+				set_uint32(c,14+64, fixed_2_30(0.3300)); // red-y
+				set_uint32(c,14+68, fixed_2_30(0.0300)); // red-z
+				set_uint32(c,14+72, fixed_2_30(0.3000)); // green-x
+				set_uint32(c,14+76, fixed_2_30(0.6000)); // green-y
+				set_uint32(c,14+80, fixed_2_30(0.1000)); // green-z
+			}
 			set_uint32(c,14+84, fixed_2_30(0.1500)); // blue-x
 			set_uint32(c,14+88, fixed_2_30(0.0600)); // blue-y
 			set_uint32(c,14+92, fixed_2_30(0.7900)); // blue-z
@@ -1754,6 +1764,15 @@ static int run(struct global_context *glctx, struct context *c)
 	c->filename = "q/rgb24largepal.bmp";
 	c->bpp = 24;
 	c->pal_entries = 300;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+	
+	defaultbmp(glctx, c);
+	c->filename = "q/rgb24v4.bmp";
+	c->headersize = 108;
+	c->bpp = 24;
+	c->pal_entries = 0;
+	c->swaprg = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
