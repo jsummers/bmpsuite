@@ -1828,6 +1828,18 @@ static int run(struct global_context *glctx, struct context *c)
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
+    defaultbmp(glctx, c);
+	c->filename = "q/rgb32bf-xbgr.bmp";
+	c->headersize = 124;
+	c->bpp = 32;
+	c->compression = BI_BITFIELDS;
+	c->bf[I_R] = 0xff000000; c->nbits[I_R] = 8; c->bf_shift[I_R] = 24;
+	c->bf[I_G] = 0x00ff0000; c->nbits[I_G] = 8; c->bf_shift[I_G] = 16;
+	c->bf[I_B] = 0x0000ff00; c->nbits[I_B] = 8; c->bf_shift[I_B] = 8;
+	c->pal_entries = 0;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
 	defaultbmp(glctx, c);
 	c->filename = "q/rgba32-1010102.bmp";
 	c->headersize = 124;
