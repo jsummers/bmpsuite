@@ -26,7 +26,7 @@ stamp: $(BMPSUITE)
 	touch stamp
 
 checksums checksums.tmp: stamp
-	md5sum -b g/* q/* b/* | LC_ALL=C sort -k2 > $@
+	md5sum -b g/* q/* b/* x/* | LC_ALL=C sort -k2 > $@
 
 # check2 is not portable, due to differences in sort order, and in md5sum's
 # output. But it's useful for development, because it can find unlisted files.
@@ -40,5 +40,5 @@ check: stamp
 
 clean:
 	rm -f $(BMPSUITE) *.o
-	rm -f stamp g/*.bmp q/*.bmp b/*.bmp
+	rm -f stamp g/*.bmp q/*.bmp b/*.bmp x/*.bmp
 

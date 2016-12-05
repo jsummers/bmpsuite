@@ -145,6 +145,8 @@ struct context {
 	int palette_reserve; // Reserve palette color #0
 	int cbsize_flag;
 	int trnstype; // Transparency type: 0=none, 1=binary, 2=full
+	int ba_fmt;
+	int ba_hdr_size;
 };
 
 static void set_int16(struct context *c, size_t offset, int v)
@@ -752,7 +754,7 @@ static void write_palette(struct context *c)
 	int r,g,b;
 	int bppe; // bytes per palette entry
 
-	offs = 14+c->headersize+c->bitfieldssize;
+	offs = c->ba_hdr_size+14+c->headersize+c->bitfieldssize;
 	bppe = (c->headersize<=12) ? 3 : 4;
 
 	if(c->bpp==8) {
@@ -877,26 +879,37 @@ static void write_palette(struct context *c)
 	}
 }
 
-static void write_fileheader(struct context *c)
+static void write_ba_header(struct context *c)
 {
 	c->mem[0]='B';
-	c->mem[1]='M';
-	if(c->bad_bfSize)
-		set_int32(c,2,0x7ddddddd);
-	else if(c->cbsize_flag)
-		set_int32(c,2,14+c->headersize);
-	else
-		set_int32(c,2,(int)c->mem_used);
-	set_int32(c,10,c->bitsoffset);
+	c->mem[1]='A';
+	set_int32(c, 2, 14+14+c->headersize);
 }
 
-static void write_bitmapcoreheader(struct context *c)
+static void write_fileheader(struct context *c, int offset)
 {
-	set_int32(c,14+0,c->headersize);
-	set_int16(c,14+4,c->w);
-	set_int16(c,14+6,c->h);
-	set_int16(c,14+8,1); // planes
-	set_int16(c,14+10,c->bpp);
+	c->mem[offset+0]='B';
+	c->mem[offset+1]='M';
+	if(c->bad_bfSize)
+		set_int32(c,offset+2,0x7ddddddd);
+	else if(c->cbsize_flag)
+		set_int32(c,offset+2,14+c->headersize);
+	else
+		set_int32(c,offset+2,(int)(c->mem_used - c->ba_hdr_size));
+
+	// One might think that for BA format, the bitsoffset field would be
+	// relative to the corresponding BM header. But it is not. It is an
+	// absolute file position.
+	set_int32(c,offset+10,c->bitsoffset);
+}
+
+static void write_bitmapcoreheader(struct context *c, int offset)
+{
+	set_int32(c,offset+0,c->headersize);
+	set_int16(c,offset+4,c->w);
+	set_int16(c,offset+6,c->h);
+	set_int16(c,offset+8,1); // planes
+	set_int16(c,offset+10,c->bpp);
 }
 
 static unsigned int fixed_2_30(double x)
@@ -1034,10 +1047,12 @@ static int make_bmp(struct context *c)
 		write_lprofile(c);
 	}
 	if(c->headersize<=12)
-		write_bitmapcoreheader(c);
+		write_bitmapcoreheader(c, c->ba_hdr_size + 14);
 	else
 		write_bitmapinfoheader(c);
-	write_fileheader(c);
+
+	if(c->ba_fmt) write_ba_header(c);
+	write_fileheader(c, c->ba_hdr_size);
 	return 1;
 }
 
@@ -1070,6 +1085,10 @@ static int make_bmp_file(struct context *c)
 
 static void set_calculated_fields(struct context *c)
 {
+	if(c->ba_fmt) {
+		c->ba_hdr_size = 14;
+		c->cbsize_flag = 1;
+	}
 
 	if(c->bpp==8 && c->pal_entries!=256) {
 		c->clr_used = c->pal_entries;
@@ -1092,7 +1111,7 @@ static void set_calculated_fields(struct context *c)
 		c->palettesize = c->pal_entries*4;
 	}
 
-	c->bitsoffset = 14 + c->headersize + c->bitfieldssize + c->palettesize + c->extrabytessize;
+	c->bitsoffset = c->ba_hdr_size + 14 + c->headersize + c->bitfieldssize + c->palettesize + c->extrabytessize;
 
 	if(c->rletrns || (c->bf[I_A] && c->nbits[I_A]==1)) {
 		c->trnstype = 1; // binary transparency
@@ -1153,6 +1172,7 @@ static int run(struct global_context *glctx, struct context *c)
 	my_mkdir("g");
 	my_mkdir("q");
 	my_mkdir("b");
+	my_mkdir("x");
 
 	defaultbmp(glctx, c);
 	c->filename = "g/pal8.bmp";
@@ -1972,6 +1992,14 @@ static int run(struct global_context *glctx, struct context *c)
 	c->pal_entries = 2;
 	c->compression = CMPR_HUFFMAN1D;
 	c->pal_wb = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(glctx, c);
+	c->filename = "x/ba-bm.bmp";
+	c->ba_fmt = 1;
+	c->headersize = 12;
+	c->pal_entries = 256;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 

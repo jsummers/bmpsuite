@@ -43,6 +43,9 @@ Files in the "b" directory I consider to be "bad":
 These are clearly invalid or unreasonable. Make sure your program doesn't crash
 when reading them.
 
+The "x" directory contains files in formats related to BMP, that you might not
+consider to truly be in "BMP format".
+
 The individual BMP files are described in the html/bmpsuite.html file.
 
 The generation utility is written in C, and is contained in the bmpsuite.c
