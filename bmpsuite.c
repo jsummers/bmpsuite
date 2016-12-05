@@ -970,9 +970,10 @@ static void write_bitmapinfoheader(struct context *c)
 			set_uint32(c,14+92, fixed_2_30(0.7900)); // blue-z
 
 			// I'm not sure if this is supposed to be the "image file gamma", like
-			// 1.0/2.2, or the "display gamma", like 2.2. "Image file gamma" is my
-			// best guess.
-			gamma = 1.0/2.2;
+			// 1.0/2.2, or the "display gamma", like 2.2.
+			// Petzold's "Programming Windows" book suggests that "2.2 (encoded
+			// as 0x23333)" would be reasonable, so that's what I'm going with.
+			gamma = 2.2;
 			// These values are in 16.16 fixed-point format.
 			set_uint32(c,14+ 96, fixed_16_16(gamma)); // bV4GammaRed
 			set_uint32(c,14+100, fixed_16_16(gamma)); // bV4GammaGreen
