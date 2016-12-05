@@ -104,6 +104,7 @@ struct context {
 #define CMPR_RLE4 2
 #define CMPR_JPEG 4
 #define CMPR_PNG  5
+#define CMPR_HUFFMAN1D 3
 #define BI_BITFIELDS      3
 #define BI_ALPHABITFIELDS 6
 	int compression;
@@ -1012,6 +1013,9 @@ static int make_bmp(struct context *c)
 		ret = write_bits_fromfile(c,"data/image.jpg");
 	else if(c->compression==CMPR_PNG)
 		ret = write_bits_fromfile(c,"data/image.png");
+	else if(c->compression==CMPR_HUFFMAN1D && c->headersize==64) {
+		ret = write_bits_fromfile(c,"data/pal1huff.g3");
+	}
 	else
 		ret = write_bits(c);
 	if(!ret) {
@@ -1922,6 +1926,16 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bpp = 0;
 	c->compression = CMPR_PNG;
 	c->pal_entries = 0;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(glctx, c);
+	c->filename = "q/pal1huff.bmp";
+	c->headersize = 64;
+	c->bpp = 1;
+	c->pal_entries = 2;
+	c->compression = CMPR_HUFFMAN1D;
+	c->pal_wb = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 

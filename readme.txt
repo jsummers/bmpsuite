@@ -50,3 +50,15 @@ file, and the files in the 'data' subdirectory. In a Unix-like environment,
 type "make bmpsuite" to build the program, or just "make" to build and run it.
 Run "make check" to verify that it writes the BMP files correctly.
 
+The data/pal1huff.tif and data/pal1huff.g3 files were created essentially
+as follows:
+(Using Unix tools. 'convert' is from ImageMagick; 'tiffcp' and 'tiffinfo' are
+from libtiff.)
+$ convert g/pal1wb.bmp -flip -compress Fax -orient bottom-left -define tiff:photometric:min-is-white temp.tif
+$ tiffcp -c g3:1d temp.tif data/pal1huff.tif
+$ tiffinfo -s data/pal1huff.tif
+  ...
+  1 Strips:
+      0: [       8,     2065]
+$ tail -c +9 data/pal1huff.tif | head -c 2065 > data/pal1huff.g3
+
