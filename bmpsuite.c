@@ -2005,6 +2005,7 @@ static int run(struct global_context *glctx, struct context *c)
 	c->headersize = 64;
 	c->bpp = 1;
 	c->pal_entries = 2;
+	c->cbsize_flag = 1;
 	c->compression = CMPR_HUFFMAN1D;
 	c->pal_wb = 1;
 	set_calculated_fields(c);
