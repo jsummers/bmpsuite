@@ -144,6 +144,7 @@ struct context {
 	int rletrns;
 	int palette_reserve; // Reserve palette color #0
 	int cbsize_flag;
+	int set_hotspot;
 	int trnstype; // Transparency type: 0=none, 1=binary, 2=full
 	int ba_fmt;
 	int ba_hdr_size;
@@ -897,6 +898,11 @@ static void write_fileheader(struct context *c, int offset)
 	else
 		set_int32(c,offset+2,(int)(c->mem_used - c->ba_hdr_size));
 
+	if(c->set_hotspot) {
+		set_int16(c, offset+6, 21);
+		set_int16(c, offset+8, 16);
+	}
+
 	// One might think that for BA format, the bitsoffset field would be
 	// relative to the corresponding BM header. But it is not. It is an
 	// absolute file position.
@@ -1197,6 +1203,15 @@ static int run(struct global_context *glctx, struct context *c)
 	c->headersize = 12;
 	c->pal_entries = 256;
 	c->cbsize_flag = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(glctx, c);
+	c->filename = "q/pal8os2-hs.bmp";
+	c->headersize = 12;
+	c->pal_entries = 256;
+	c->cbsize_flag = 1;
+	c->set_hotspot = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
 
