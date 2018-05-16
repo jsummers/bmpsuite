@@ -1,6 +1,6 @@
 //
 // BMP Suite (2012 rewrite)
-// Copyright (C) 2012-2016 Jason Summers
+// Copyright (C) 2012-2018 Jason Summers
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -105,6 +105,7 @@ struct context {
 #define CMPR_JPEG 4
 #define CMPR_PNG  5
 #define CMPR_HUFFMAN1D 3
+#define CMPR_RLE24     4
 #define BI_BITFIELDS      3
 #define BI_ALPHABITFIELDS 6
 	int compression;
@@ -506,9 +507,9 @@ static void calc_rle_run_lens(struct context *c, const unsigned char *row,
 			}
 
 			if(c->compression==CMPR_RLE4 && k-i<=1) { n++; continue; } // (RLE4) First two pixels can always be part of the run
-			if(c->compression==CMPR_RLE8 && k-i<=0) { n++; continue; } // (RLE8) First pixels can always be part of the run
+			if(c->compression!=CMPR_RLE4 && k-i<=0) { n++; continue; } // (RLE8) First pixels can always be part of the run
 			if(c->compression==CMPR_RLE4 && row[k]==row[k-2]) { n++; continue; }
-			if(c->compression==CMPR_RLE8 && row[k]==row[k-1]) { n++; continue; }
+			if(c->compression!=CMPR_RLE4 && row[k]==row[k-1]) { n++; continue; }
 			break;
 		}
 		run_lens[i] = n;
@@ -523,6 +524,7 @@ static int write_bits_rle(struct context *c)
 	size_t rowpos;
 	int pixels_per_row;
 	unsigned char *row = NULL;
+	struct color_i *row24 = NULL;
 	int *run_lens = NULL;
 	int i,j;
 	int j_logical;
@@ -538,6 +540,7 @@ static int write_bits_rle(struct context *c)
 	pixels_per_row = c->w;
 	row = malloc(pixels_per_row);
 	if(!row) goto done;
+	row24 = malloc(pixels_per_row * sizeof(struct color_i));
 	run_lens = malloc(sizeof(int)*pixels_per_row);
 	if(!run_lens) goto done;
 	thresh = c->compression==CMPR_RLE4 ? 5 : 4;
@@ -560,6 +563,12 @@ static int write_bits_rle(struct context *c)
 				tmp2 = quantize(clr.s[I_G],7,i,j_logical,1,1,1);
 				tmp3 = quantize(clr.s[I_B],6,i,j_logical,1,1,1);
 				row[i] = c->palette_reserve + tmp1 + tmp2*6 + tmp3*42;
+				// Calculate the would-be palette color. RLE24 needs this.
+				// Note that the RLE24 image uses only the 8-bit colors, since
+				// that makes it more compressible.
+				row24[i].s[I_R] = quantize(((double)tmp1)/5.0, 256, 0, 0, 0, 0, 0);
+				row24[i].s[I_G] = quantize(((double)tmp2)/6.0, 256, 0, 0, 0, 0, 0);
+				row24[i].s[I_B] = quantize(((double)tmp3)/5.0, 256, 0, 0, 0, 0, 0);
 			}
 			if(c->rletrns && clr.s[I_A]<0.5) {
 				row[i] = 0;
@@ -599,6 +608,21 @@ static int write_bits_rle(struct context *c)
 				if(k != -1 && k-rowpos >= 3) {
 					unc_len = k-rowpos;
 
+					if(c->compression==CMPR_RLE24) {
+						c->mem[curpos++] = 0;
+						c->mem[curpos++] = unc_len;
+						for(i=0; i<unc_len; i++) {
+							c->mem[curpos++] = row24[rowpos].s[I_B];
+							c->mem[curpos++] = row24[rowpos].s[I_G];
+							c->mem[curpos++] = row24[rowpos].s[I_R];
+							rowpos++;
+						}
+						if(unc_len%2) {
+							c->mem[curpos++] = 0; // padding
+						}
+						continue;
+					}
+
 					if(c->compression==CMPR_RLE4)
 						unc_len_padded = unc_len + (3-(unc_len+3)%4);
 					else
@@ -636,11 +660,17 @@ static int write_bits_rle(struct context *c)
 				c->mem[curpos] = row[rowpos]<<4;
 				if(run_lens[rowpos]>=2)
 					c->mem[curpos] |= row[rowpos+1];
+				curpos++;
+			}
+			else if(c->compression==CMPR_RLE24) {
+				c->mem[curpos++] = row24[rowpos].s[I_B];
+				c->mem[curpos++] = row24[rowpos].s[I_G];
+				c->mem[curpos++] = row24[rowpos].s[I_R];
 			}
 			else {
 				c->mem[curpos] = row[rowpos];
+				curpos++;
 			}
-			curpos++;
 			rowpos += run_lens[rowpos];
 		}
 
@@ -659,6 +689,7 @@ static int write_bits_rle(struct context *c)
 
 done:
 	free(row);
+	free(row24);
 	free(run_lens);
 	return retval;
 }
@@ -1026,7 +1057,8 @@ static int make_bmp(struct context *c)
 
 	write_bitfields(c);
 	write_palette(c);
-	if(c->compression==CMPR_RLE4 || c->compression==CMPR_RLE8)
+	if(c->compression==CMPR_RLE4 || c->compression==CMPR_RLE8 ||
+			(c->compression==CMPR_RLE24 && c->headersize==64))
 		ret = write_bits_rle(c);
 	else if(c->compression==CMPR_JPEG && c->headersize>40)
 		ret = write_bits_fromfile(c,"data/image.jpg");
@@ -1996,6 +2028,16 @@ static int run(struct global_context *glctx, struct context *c)
 	c->headersize = 124;
 	c->bpp = 0;
 	c->compression = CMPR_PNG;
+	c->pal_entries = 0;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(glctx, c);
+	c->filename = "q/rgb24rle24.bmp";
+	c->headersize = 64;
+	c->bpp = 24;
+	c->cbsize_flag = 1;
+	c->compression = CMPR_RLE24;
 	c->pal_entries = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
