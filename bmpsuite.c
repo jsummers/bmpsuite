@@ -2043,6 +2043,29 @@ static int run(struct global_context *glctx, struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(glctx, c);
+	c->filename = "q/rgb24rle24rlecut.bmp";
+	c->headersize = 64;
+	c->bpp = 24;
+	c->cbsize_flag = 1;
+	c->compression = CMPR_RLE24;
+	c->pal_entries = 0;
+	c->rletrns = 1;
+	c->cut_rle = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(glctx, c);
+	c->filename = "q/rgb24rle24rletrns.bmp";
+	c->headersize = 64;
+	c->bpp = 24;
+	c->cbsize_flag = 1;
+	c->compression = CMPR_RLE24;
+	c->pal_entries = 0;
+	c->rletrns = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(glctx, c);
 	c->filename = "q/pal1huff.bmp";
 	c->headersize = 64;
 	c->bpp = 1;
