@@ -541,6 +541,7 @@ static int write_bits_rle(struct context *c)
 	row = malloc(pixels_per_row);
 	if(!row) goto done;
 	row24 = malloc(pixels_per_row * sizeof(struct color_i));
+	if(!row24) goto done;
 	run_lens = malloc(sizeof(int)*pixels_per_row);
 	if(!run_lens) goto done;
 	thresh = c->compression==CMPR_RLE4 ? 5 : 4;
