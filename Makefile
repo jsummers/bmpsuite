@@ -1,7 +1,7 @@
 
-CC:=gcc
-CFLAGS:=-g -Wall -Wextra -Wmissing-prototypes -Wformat-security -Wno-unused-parameter
-LDFLAGS:=-lm
+CFLAGS ?= -g -Wall -Wextra -Wmissing-prototypes -Wformat-security -Wno-unused-parameter
+LDFLAGS ?=
+LDLIBS ?= -lm
 
 all: stamp
 
@@ -19,7 +19,7 @@ bmpsuite.o: bmpsuite.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(BMPSUITE): bmpsuite.o
-	$(CC) $(LDFLAGS) -o $@ $^
+	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 stamp: $(BMPSUITE)
 	./$(BMPSUITE)
