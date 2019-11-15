@@ -1925,7 +1925,7 @@ static int run(struct global_context *glctx, struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(glctx, c);
-	c->filename = "q/rgba32.bmp";
+	c->filename = "q/rgba32-2.bmp";
 	c->headersize = 124;
 	c->bpp = 32;
 	c->compression = BI_BITFIELDS;
