@@ -1,6 +1,6 @@
 //
 // BMP Suite (2012 rewrite)
-// Copyright (C) 2012-2018 Jason Summers
+// Copyright (C) 2012-2020 Jason Summers
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
