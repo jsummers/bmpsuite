@@ -65,3 +65,8 @@ $ tiffinfo -s data/pal1huff.tif
       0: [       8,     2065]
 $ tail -c +9 data/pal1huff.tif | head -c 2065 > data/pal1huff.g3
 
+Then, append six "EOL" codes to the data. Assuming the raw fax data ends with
+... a1 d0 e0, append these nine bytes: 02 00 20 02 00 20 02 00 20.
+The problem is that this requires knowing what bit the data ended on. It should
+always be safe to append 00 10 01 00 10 01 00 10 01, though this has the extra
+complication of relying on a feature called "fill bits".

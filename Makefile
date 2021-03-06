@@ -21,7 +21,7 @@ bmpsuite.o: bmpsuite.c
 $(BMPSUITE): bmpsuite.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-stamp: $(BMPSUITE)
+stamp: $(BMPSUITE) data/image.jpg data/image.png data/pal1huff.g3 data/swap-r-g.icc data/srgb.icc
 	./$(BMPSUITE)
 	touch stamp
 
