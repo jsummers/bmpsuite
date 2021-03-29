@@ -149,6 +149,7 @@ struct context {
 	int trnstype; // Transparency type: 0=none, 1=binary, 2=full
 	int ba_fmt;
 	int ba_hdr_size;
+	int huff_lsb;
 };
 
 static void set_int16(struct context *c, size_t offset, int v)
@@ -695,7 +696,19 @@ done:
 	return retval;
 }
 
-static int write_bits_fromfile(struct context *c, const char *fn)
+static unsigned char reverse_bits_in_byte(unsigned char x)
+{
+	unsigned int i;
+	unsigned char y = 0;
+
+	for(i=0; i<=7; i++) {
+		if(x & (1<<i)) y |= (1<<(7-i));
+	}
+	return y;
+}
+
+static int write_bits_fromfile(struct context *c, const char *fn,
+	unsigned int reverse_bits_flag)
 {
 	int retval = 0;
 	FILE *f = NULL;
@@ -706,6 +719,13 @@ static int write_bits_fromfile(struct context *c, const char *fn)
 	c->bitssize = fread(&c->mem[c->bitsoffset], 1, 100000-c->bitsoffset, f);
 	if(c->bitssize<1) goto done;
 	c->mem_used = c->bitsoffset + c->bitssize;
+
+	if(reverse_bits_flag) {
+		int i;
+		for(i=0; i<c->bitssize; i++) {
+			c->mem[c->bitsoffset+i] = reverse_bits_in_byte(c->mem[c->bitsoffset+i]);
+		}
+	}
 
 	retval = 1;
 done:
@@ -1062,11 +1082,11 @@ static int make_bmp(struct context *c)
 			(c->compression==CMPR_RLE24 && c->headersize==64))
 		ret = write_bits_rle(c);
 	else if(c->compression==CMPR_JPEG && c->headersize>40)
-		ret = write_bits_fromfile(c,"data/image.jpg");
+		ret = write_bits_fromfile(c,"data/image.jpg", 0);
 	else if(c->compression==CMPR_PNG)
-		ret = write_bits_fromfile(c,"data/image.png");
+		ret = write_bits_fromfile(c,"data/image.png", 0);
 	else if(c->compression==CMPR_HUFFMAN1D && c->headersize==64) {
-		ret = write_bits_fromfile(c,"data/pal1huff.g3");
+		ret = write_bits_fromfile(c, "data/pal1huff.g3", (c->huff_lsb?1:0));
 	}
 	else
 		ret = write_bits(c);
@@ -2057,12 +2077,24 @@ static int run(struct global_context *glctx, struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(glctx, c);
-	c->filename = "q/pal1huff.bmp";
+	c->filename = "q/pal1huffmsb.bmp";
 	c->headersize = 64;
 	c->bpp = 1;
 	c->pal_entries = 2;
 	c->cbsize_flag = 1;
 	c->compression = CMPR_HUFFMAN1D;
+	c->pal_wb = 1;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(glctx, c);
+	c->filename = "q/pal1hufflsb.bmp";
+	c->headersize = 64;
+	c->bpp = 1;
+	c->pal_entries = 2;
+	c->cbsize_flag = 1;
+	c->compression = CMPR_HUFFMAN1D;
+	c->huff_lsb = 1;
 	c->pal_wb = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
