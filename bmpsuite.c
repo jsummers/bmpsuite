@@ -158,6 +158,12 @@ static void set_int16(struct context *c, size_t offset, int v)
 	c->mem[offset+1] = (v>>8)&0xff;
 }
 
+static void set_uint16(struct context *c, size_t offset, unsigned int v)
+{
+	c->mem[offset] = v&0xff;
+	c->mem[offset+1] = (v>>8)&0xff;
+}
+
 static void set_int32(struct context *c, size_t offset, int v)
 {
 	c->mem[offset] = v&0xff;
@@ -363,6 +369,36 @@ static double srgb_to_linear_gray(const struct color_f *clr)
 		srgb_to_linear(clr->s[I_B])*0.072187;
 }
 
+// colorspaceflag = convert from sRGB to linear
+//  Windows Imaging Component (WIC) "Native Pixel Formats Overview" document
+//  hints that this format might use "scRGB" color space, but even if that's
+//  true in some sense, evidence suggests the encoding is linear.
+static void write_64bppfixedpoint16(struct context *c, size_t offset,
+	double val1, int colorspaceflag)
+{
+	double val;
+	unsigned int v;
+
+	if(colorspaceflag)
+		val = srgb_to_linear(val1);
+	else
+		val = val1;
+
+	if(val<0.0) {
+		// Negative numbers are supported by this format, but we don't
+		// currently use them.
+		v = 0;
+	}
+	else {
+		// 0.0  ->  0
+		// 1.0  ->  8192
+		v = (unsigned int)(val*8192.0 + 0.5);
+		if(v>32767) v = 32767;
+	}
+
+	set_uint16(c, offset, v);
+}
+
 static void set_pixel(struct context *c, int x, int y,
   const struct color_f *clr)
 {
@@ -380,7 +416,14 @@ static void set_pixel(struct context *c, int x, int y,
 	else
 		row_offs = (c->h-y-1)*c->rowsize;
 
-	if(c->bpp==32) {
+	if(c->bpp==64) {
+		offs = row_offs + 8*x;
+		write_64bppfixedpoint16(c, c->bitsoffset+offs+0, clr->s[I_B], 1);
+		write_64bppfixedpoint16(c, c->bitsoffset+offs+2, clr->s[I_G], 1);
+		write_64bppfixedpoint16(c, c->bitsoffset+offs+4, clr->s[I_R], 1);
+		write_64bppfixedpoint16(c, c->bitsoffset+offs+6, 1.0, 0);
+	}
+	else if(c->bpp==32) {
 		offs = row_offs + 4*x;
 		for(z=0; z<3; z++) {
 			qclr.s[z] = quantize(clr->s[z], 1<<c->nbits[z], x, y, 0, 0, 0);
@@ -2044,6 +2087,13 @@ static int run(struct global_context *glctx, struct context *c)
 	c->bf[I_B] = 0x000000ff; c->nbits[I_B] = 8; c->bf_shift[I_B] = 0;
 	c->bf[I_A] = 0x00ff0000; c->nbits[I_A] = 8; c->bf_shift[I_A] = 16;
 	c->bitfieldssize = 16;
+	c->pal_entries = 0;
+	set_calculated_fields(c);
+	if(!make_bmp_file(c)) goto done;
+
+	defaultbmp(glctx, c);
+	c->filename = "q/rgb64.bmp";
+	c->bpp = 64;
 	c->pal_entries = 0;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
