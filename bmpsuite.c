@@ -393,7 +393,7 @@ static void write_64bppfixedpoint16(struct context *c, size_t offset,
 		// 0.0  ->  0
 		// 1.0  ->  8192
 		v = (unsigned int)(val*8192.0 + 0.5);
-		if(v>32767) v = 32767;
+		if(v>8192) v = 8192;
 	}
 
 	set_uint16(c, offset, v);
@@ -421,7 +421,10 @@ static void set_pixel(struct context *c, int x, int y,
 		write_64bppfixedpoint16(c, c->bitsoffset+offs+0, clr->s[I_B], 1);
 		write_64bppfixedpoint16(c, c->bitsoffset+offs+2, clr->s[I_G], 1);
 		write_64bppfixedpoint16(c, c->bitsoffset+offs+4, clr->s[I_R], 1);
-		write_64bppfixedpoint16(c, c->bitsoffset+offs+6, 1.0, 0);
+		// AFAICT, this format uses non-premultiplied alpha (which is what
+		// other BMP formats presumably use, but 64bpp is different enough
+		// that we shouldn't just assume).
+		write_64bppfixedpoint16(c, c->bitsoffset+offs+6, clr->s[I_A], 0);
 	}
 	else if(c->bpp==32) {
 		offs = row_offs + 4*x;
@@ -2092,10 +2095,15 @@ static int run(struct global_context *glctx, struct context *c)
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(glctx, c);
-	c->filename = "q/rgb64.bmp";
+	c->filename = "q/rgba64.bmp";
 	c->bpp = 64;
 	c->pal_entries = 0;
+	// Next two lines are a quick hack to make set_calculated_fields() do
+	// what we want.
+	c->nbits[I_A] = 16;
+	c->bf[I_A] = 1;
 	set_calculated_fields(c);
+
 	if(!make_bmp_file(c)) goto done;
 
 	defaultbmp(glctx, c);
