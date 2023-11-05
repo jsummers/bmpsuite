@@ -149,7 +149,7 @@ struct context {
 	int trnstype; // Transparency type: 0=none, 1=binary, 2=full
 	int ba_fmt;
 	int ba_hdr_size;
-	int huff_lsb;
+	int huff_lsb; // No longer used
 };
 
 static void set_int16(struct context *c, size_t offset, int v)
@@ -2141,18 +2141,6 @@ static int run(struct global_context *glctx, struct context *c)
 	c->pal_entries = 2;
 	c->cbsize_flag = 1;
 	c->compression = CMPR_HUFFMAN1D;
-	c->pal_wb = 1;
-	set_calculated_fields(c);
-	if(!make_bmp_file(c)) goto done;
-
-	defaultbmp(glctx, c);
-	c->filename = "q/pal1hufflsb.bmp";
-	c->headersize = 64;
-	c->bpp = 1;
-	c->pal_entries = 2;
-	c->cbsize_flag = 1;
-	c->compression = CMPR_HUFFMAN1D;
-	c->huff_lsb = 1;
 	c->pal_wb = 1;
 	set_calculated_fields(c);
 	if(!make_bmp_file(c)) goto done;
